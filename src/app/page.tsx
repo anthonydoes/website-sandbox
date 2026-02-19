@@ -9,6 +9,7 @@ interface Event {
   title: string;
   description: string;
   url: string;
+  coverImageUrl?: string;
 }
 
 export default function Home() {

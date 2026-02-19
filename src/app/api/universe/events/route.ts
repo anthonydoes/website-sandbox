@@ -50,6 +50,9 @@ export async function GET() {
               title
               url
               description
+              coverPhoto {
+                url(width: 1200, height: 800)
+              }
             }
           }
         }
@@ -62,7 +65,10 @@ export async function GET() {
         console.log('Fetching events from Universe...');
         const data: any = await client.request(query, variables);
 
-        const events = data.host?.events?.nodes || [];
+        const events = (data.host?.events?.nodes || []).map((event: any) => ({
+            ...event,
+            coverImageUrl: event.coverPhoto?.url || null
+        }));
 
         return NextResponse.json({ events, totalCount: data.host?.events?.totalCount || 0 });
     } catch (error: any) {
