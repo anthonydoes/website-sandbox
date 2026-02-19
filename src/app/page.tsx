@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, MapPin, Ticket } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, X, Ticket } from 'lucide-react';
+
+interface TimeSlot {
+  startAt: string;
+  endAt: string;
+}
 
 interface Event {
   id: string;
@@ -10,12 +15,14 @@ interface Event {
   description: string;
   url: string;
   coverImageUrl?: string;
+  timeSlots?: TimeSlot[];
 }
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     // Load the Universe Embed script dynamically
@@ -46,6 +53,60 @@ export default function Home() {
       document.body.removeChild(script);
     };
   }, []);
+
+  const renderTimeSlots = (slots: TimeSlot[]) => {
+    if (!slots || slots.length === 0) return null;
+
+    if (slots.length === 1) {
+      const start = new Date(slots[0].startAt);
+      const end = new Date(slots[0].endAt);
+
+      const startDateString = start.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      });
+      const startTimeString = start.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit'
+      });
+      const endTimeString = end.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit'
+      });
+
+      return (
+        <span className="text-sm text-gray-300">
+          {startDateString} at {startTimeString} - {endTimeString}
+        </span>
+      );
+    }
+
+    // Multiple timeslots
+    const sortedSlots = [...slots].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    const firstDate = new Date(sortedSlots[0].startAt);
+    const lastDate = new Date(sortedSlots[sortedSlots.length - 1].startAt);
+
+    const sameMonth = firstDate.getMonth() === lastDate.getMonth() && firstDate.getFullYear() === lastDate.getFullYear();
+    const sameYear = firstDate.getFullYear() === lastDate.getFullYear();
+
+    let dateRangeStr = '';
+
+    if (sameMonth) {
+      if (firstDate.getDate() === lastDate.getDate()) {
+        dateRangeStr = firstDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      } else {
+        dateRangeStr = `${firstDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - ${lastDate.getDate()}, ${firstDate.getFullYear()}`;
+      }
+    } else if (sameYear) {
+      dateRangeStr = `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${firstDate.getFullYear()}`;
+    } else {
+      dateRangeStr = `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+
+    return (
+      <div className="flex flex-col gap-1 text-gray-300">
+        <span className="text-sm font-medium">{dateRangeStr}</span>
+        <span className="text-sm text-indigo-400">Multiple timeslots available</span>
+      </div>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#050511] text-white">
@@ -96,7 +157,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20"
+                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 flex flex-col"
               >
                 <div className="aspect-[16/9] w-full bg-indigo-900/50 relative overflow-hidden">
                   {event.coverImageUrl ? (
@@ -113,30 +174,122 @@ export default function Home() {
                   <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent" />
                 </div>
 
-                <div className="p-8">
-                  <h3 className="text-2xl font-bold text-white mb-3 line-clamp-2">
+                <div className="p-8 flex flex-col flex-1">
+                  <h3 className="text-2xl font-bold text-white mb-4 line-clamp-2">
                     {event.title}
                   </h3>
 
-                  {event.description && (
-                    <p className="text-gray-400 text-sm mb-6 line-clamp-3">
-                      {event.description.replace(/<[^>]*>?/gm, '')}
-                    </p>
+                  {event.timeSlots && event.timeSlots.length > 0 && (
+                    <div className="flex items-start gap-2 mb-6 text-gray-400">
+                      <Calendar className="w-4 h-4 mt-0.5 shrink-0 text-indigo-400" />
+                      <div className="flex-1">
+                        {renderTimeSlots(event.timeSlots)}
+                      </div>
+                    </div>
                   )}
 
-                  {/* Universe Embed Link */}
-                  <a
-                    href={event.url}
-                    className="uni-embed inline-flex items-center justify-center w-full rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:from-indigo-400 hover:to-cyan-400 hover:scale-[1.02] transition-all duration-200"
-                  >
-                    View Details & Book
-                  </a>
+                  <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setSelectedEvent(event)}
+                      className="flex-1 rounded-xl bg-white/10 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:bg-white/20 hover:scale-[1.02] transition-all duration-200 border border-white/10"
+                    >
+                      More Info
+                    </button>
+                    {/* Universe Embed Link */}
+                    <a
+                      href={event.url}
+                      className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:from-indigo-400 hover:to-cyan-400 hover:scale-[1.02] transition-all duration-200"
+                    >
+                      Get Tickets
+                    </a>
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
         )}
       </section>
+
+      {/* Event Details Modal overlay */}
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-2xl bg-[#0f1021] rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[90vh]"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black/40 hover:bg-white/20 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-md"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Modal Cover Image */}
+              <div className="w-full h-64 sm:h-80 relative shrink-0 bg-indigo-900/50">
+                {selectedEvent.coverImageUrl ? (
+                  <img
+                    src={selectedEvent.coverImageUrl}
+                    alt={selectedEvent.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-indigo-500/30 to-purple-500/30">
+                    <Ticket className="w-16 h-16 text-white/30" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-linear-to-t from-[#0f1021] via-[#0f1021]/60 to-transparent" />
+
+                <div className="absolute bottom-0 left-0 p-6 sm:p-8 w-full">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                    {selectedEvent.title}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Modal Content - Scrollable */}
+              <div className="px-6 sm:px-8 pb-8 pt-4 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4f46e5 transparent' }}>
+                {selectedEvent.timeSlots && selectedEvent.timeSlots.length > 0 && (
+                  <div className="flex items-start gap-3 mb-8 text-indigo-300 bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20">
+                    <Calendar className="w-5 h-5 mt-0.5 shrink-0" />
+                    <div className="flex flex-col gap-1 w-full">
+                      <span className="font-semibold text-white">Event Times</span>
+                      {renderTimeSlots(selectedEvent.timeSlots)}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.description && (
+                  <div
+                    className="prose prose-invert max-w-none prose-p:text-gray-300 prose-a:text-indigo-400 hover:prose-a:text-indigo-300 text-sm sm:text-base leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: selectedEvent.description }}
+                  />
+                )}
+              </div>
+
+              {/* Modal Footer (Sticky) */}
+              <div className="p-6 sm:p-8 bg-white/5 border-t border-white/10 shrink-0 mt-auto">
+                <a
+                  href={selectedEvent.url}
+                  className="uni-embed flex items-center justify-center w-full rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 px-8 py-4 text-base font-bold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 hover:scale-[1.02] transition-all duration-200"
+                >
+                  Get Tickets
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
