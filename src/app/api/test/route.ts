@@ -17,25 +17,19 @@ export async function GET() {
     });
 
     const query = gql`
-            query GetEvents($hostId: ID!) {
-              host(id: $hostId) {
-                events(states: [POSTED]) {
-                  nodes(limit: 5) {
-                    title
-                    firstTimeSlot: timeSlots(first: 1) {
-                      nodes {
-                        startAt
-                        endAt
+            query IntrospectEventsOrder {
+              __type(name: "Host") {
+                fields {
+                  name
+                  args {
+                    name
+                    type {
+                      name
+                      kind
+                      ofType {
+                        name
+                        kind
                       }
-                    }
-                    lastTimeSlot: timeSlots(last: 1) {
-                      nodes {
-                        startAt
-                        endAt
-                      }
-                    }
-                    timeSlots {
-                        totalCount
                     }
                   }
                 }
@@ -43,10 +37,15 @@ export async function GET() {
             }
         `;
 
-    const variables = { hostId: "63ea8385a8d65900205da7a4" };
-    const data: any = await client.request(query, variables);
-    return NextResponse.json(data);
+    const data: any = await client.request(query);
+    // Find the "events" field and its arguments
+    const hostFields = data.__type.fields;
+    const eventsField = hostFields.find((f: any) => f.name === 'events');
+
+    return NextResponse.json({
+      eventsArgs: eventsField?.args
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message, details: error.response?.errors || error.response?.data }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -271,8 +271,10 @@ export default function Home() {
 
                 {selectedEvent.description && (
                   <div
-                    className="prose prose-invert max-w-none prose-p:text-gray-300 prose-a:text-indigo-400 hover:prose-a:text-indigo-300 text-sm sm:text-base leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: selectedEvent.description }}
+                    className="description-content text-sm sm:text-base whitespace-pre-line"
+                    dangerouslySetInnerHTML={{
+                      __html: selectedEvent.description
+                    }}
                   />
                 )}
               </div>

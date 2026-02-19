@@ -49,7 +49,7 @@ export async function GET() {
               id
               title
               url
-              description
+              description(format: HTML)
               coverPhoto {
                 url(width: 1200, height: 800)
               }
@@ -76,6 +76,17 @@ export async function GET() {
       coverImageUrl: event.coverPhoto?.url || null,
       timeSlots: event.timeSlots?.nodes || []
     }));
+
+    // Sort events chronologically by their earliest timeslot start time
+    events.sort((a: any, b: any) => {
+      const getEarliestStart = (item: any) => {
+        if (!item.timeSlots || item.timeSlots.length === 0) return Infinity;
+        const starts = item.timeSlots.map((ts: any) => new Date(ts.startAt).getTime());
+        return Math.min(...starts);
+      };
+
+      return getEarliestStart(a) - getEarliestStart(b);
+    });
 
     return NextResponse.json({ events, totalCount: data.host?.events?.totalCount || 0 });
   } catch (error: any) {
