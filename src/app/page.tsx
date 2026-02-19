@@ -23,6 +23,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (events.length === 0) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % events.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [events.length]);
 
   useEffect(() => {
     // Load the Universe Embed script dynamically
@@ -134,6 +143,89 @@ export default function Home() {
           </motion.p>
         </div>
       </section>
+
+      {/* Hero Carousel */}
+      {!loading && !error && events.length > 0 && (
+        <section className="mx-auto max-w-7xl px-6 lg:px-8 mb-12">
+          <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden group rounded-3xl border border-white/10 shadow-2xl shadow-indigo-500/10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <div className="relative w-full h-full">
+                  {events[currentSlide].coverImageUrl ? (
+                    <img
+                      src={events[currentSlide].coverImageUrl}
+                      alt={events[currentSlide].title}
+                      className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-indigo-900/50 flex items-center justify-center">
+                      <Ticket className="w-24 h-24 text-white/20" />
+                    </div>
+                  )}
+
+                  {/* Overlay Gradients */}
+                  <div className="absolute inset-0 bg-linear-to-t from-[#050511] via-[#050511]/40 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-r from-[#050511]/80 via-transparent to-transparent" />
+
+                  <div className="absolute inset-0 flex items-end pb-12 sm:pb-20">
+                    <div className="mx-auto max-w-7xl px-6 lg:px-8 w-full">
+                      <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2, duration: 0.6 }}
+                        className="max-w-2xl"
+                      >
+                        <span className="inline-block px-4 py-1.5 mb-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-sm font-semibold backdrop-blur-md">
+                          Featured Event
+                        </span>
+                        <h2 className="text-4xl sm:text-7xl font-black text-white mb-6 tracking-tight leading-[1.1]">
+                          {events[currentSlide].title}
+                        </h2>
+
+                        <div className="flex flex-wrap gap-4">
+                          <button
+                            onClick={() => setSelectedEvent(events[currentSlide])}
+                            className="px-8 py-4 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 font-bold transition-all duration-200 hover:scale-[1.02]"
+                          >
+                            More Info
+                          </button>
+                          <a
+                            href={events[currentSlide].url}
+                            className="uni-embed px-8 py-4 rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 font-bold shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:scale-[1.02]"
+                          >
+                            Get Tickets
+                          </a>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Navigation Dots */}
+            <div className="absolute bottom-8 right-8 flex gap-3 z-10">
+              {events.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${idx === currentSlide
+                    ? 'w-10 bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.5)]'
+                    : 'w-3 bg-white/20 hover:bg-white/40'
+                    }`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Events Grid */}
       <section className="mx-auto max-w-7xl px-6 pb-24 sm:pb-32 lg:px-8">
