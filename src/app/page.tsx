@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Ticket } from 'lucide-react';
+import { Calendar, X, Ticket, LayoutGrid, List } from 'lucide-react';
 
 interface TimeSlot {
   startAt: string;
@@ -24,6 +24,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -237,7 +238,33 @@ export default function Home() {
         </section>
       )}
 
-      {/* Events Grid */}
+      {/* Events View Controls */}
+      <section className="mx-auto max-w-7xl px-6 mb-8 lg:px-8 flex justify-end">
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 backdrop-blur-md">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'grid'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+              : 'text-gray-400 hover:text-white'
+              }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Grid
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'list'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+              : 'text-gray-400 hover:text-white'
+              }`}
+          >
+            <List className="w-4 h-4" />
+            List
+          </button>
+        </div>
+      </section>
+
+      {/* Events Display */}
       <section className="mx-auto max-w-7xl px-6 pb-24 sm:pb-32 lg:px-8">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -252,62 +279,120 @@ export default function Home() {
         ) : events.length === 0 ? (
           <div className="text-center text-gray-400">No events found for this host.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-            {events.map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 flex flex-col"
-              >
-                <div className="aspect-[16/9] w-full bg-indigo-900/50 relative overflow-hidden">
-                  {event.coverImageUrl ? (
-                    <img
-                      src={event.coverImageUrl}
-                      alt={event.title}
-                      className="object-cover w-full h-full opacity-80 group-hover:scale-105 group-hover:opacity-100 transition-all duration-500"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-linear-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center">
-                      <Ticket className="w-12 h-12 text-white/30" />
+          <div className="relative z-10">
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {events.map((event, index) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 flex flex-col"
+                  >
+                    <div className="aspect-[16/9] w-full bg-indigo-900/50 relative overflow-hidden">
+                      {event.coverImageUrl ? (
+                        <img
+                          src={event.coverImageUrl}
+                          alt={event.title}
+                          className="object-cover w-full h-full opacity-80 group-hover:scale-105 group-hover:opacity-100 transition-all duration-500"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-linear-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center">
+                          <Ticket className="w-12 h-12 text-white/30" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent" />
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent" />
-                </div>
 
-                <div className="p-8 flex flex-col flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-4 line-clamp-2">
-                    {event.title}
-                  </h3>
+                    <div className="p-8 flex flex-col flex-1">
+                      <h3 className="text-2xl font-bold text-white mb-4 line-clamp-2">
+                        {event.title}
+                      </h3>
 
-                  {event.timeSlots && event.timeSlots.length > 0 && (
-                    <div className="flex items-start gap-2 mb-6 text-gray-400">
-                      <Calendar className="w-4 h-4 mt-0.5 shrink-0 text-indigo-400" />
-                      <div className="flex-1">
-                        {renderTimeSlots(event.timeSlots)}
+                      {event.timeSlots && event.timeSlots.length > 0 && (
+                        <div className="flex items-start gap-2 mb-6 text-gray-400">
+                          <Calendar className="w-4 h-4 mt-0.5 shrink-0 text-indigo-400" />
+                          <div className="flex-1">
+                            {renderTimeSlots(event.timeSlots)}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={() => setSelectedEvent(event)}
+                          className="flex-1 rounded-xl bg-white/10 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:bg-white/20 hover:scale-[1.02] transition-all duration-200 border border-white/10"
+                        >
+                          More Info
+                        </button>
+                        <a
+                          href={event.url}
+                          className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:from-indigo-400 hover:to-cyan-400 hover:scale-[1.02] transition-all duration-200"
+                        >
+                          Get Tickets
+                        </a>
                       </div>
                     </div>
-                  )}
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {events.map((event, index) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-all duration-300 flex items-center p-4 md:p-6 gap-6 hover:border-indigo-500/30"
+                  >
+                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-indigo-900/50 overflow-hidden shrink-0 border border-white/5">
+                      {event.coverImageUrl ? (
+                        <img
+                          src={event.coverImageUrl}
+                          alt={event.title}
+                          className="object-cover w-full h-full opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-indigo-500/20 to-cyan-500/20">
+                          <Ticket className="w-8 h-8 text-white/20" />
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="mt-auto flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={() => setSelectedEvent(event)}
-                      className="flex-1 rounded-xl bg-white/10 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:bg-white/20 hover:scale-[1.02] transition-all duration-200 border border-white/10"
-                    >
-                      More Info
-                    </button>
-                    {/* Universe Embed Link */}
-                    <a
-                      href={event.url}
-                      className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-linear-to-r from-indigo-500 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-xs hover:from-indigo-400 hover:to-cyan-400 hover:scale-[1.02] transition-all duration-200"
-                    >
-                      Get Tickets
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-bold text-white mb-2 truncate group-hover:text-indigo-400 transition-colors">
+                        {event.title}
+                      </h3>
+                      {event.timeSlots && event.timeSlots.length > 0 && (
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <div className="truncate">
+                            {renderTimeSlots(event.timeSlots)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                      <button
+                        onClick={() => setSelectedEvent(event)}
+                        className="rounded-xl bg-white/5 px-6 py-2.5 text-sm font-semibold text-white hover:bg-white/10 border border-white/10 transition-all duration-200"
+                      >
+                        More Info
+                      </button>
+                      <a
+                        href={event.url}
+                        className="uni-embed inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all duration-200"
+                      >
+                        Get Tickets
+                      </a>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
