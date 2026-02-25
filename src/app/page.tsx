@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Ticket, LayoutGrid, List } from 'lucide-react';
+import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface TimeSlot {
   startAt: string;
@@ -24,7 +24,9 @@ export default function Home() {
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date, events: Event[] } | null>(null);
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -150,7 +152,7 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="mt-8 text-lg sm:text-xl leading-8 text-gray-400 max-w-2xl mx-auto"
           >
-            Welcome to the official Universe client sandbox. Explore how our API enables you to seamlessly query, design, and orchestrate immersive event experiences directly within your own custom digital environments.
+            Welcome to the un-official Universe client events website sandbox. Explore how our API enables you to seamlessly query, design, and orchestrate immersive event experiences directly within your own custom digital environments.
           </motion.p>
         </div>
       </section>
@@ -261,6 +263,16 @@ export default function Home() {
             <List className="w-4 h-4" />
             List
           </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'calendar'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+              : 'text-gray-400 hover:text-white'
+              }`}
+          >
+            <CalendarDays className="w-4 h-4" />
+            Calendar
+          </button>
         </div>
       </section>
 
@@ -337,7 +349,7 @@ export default function Home() {
                   </motion.div>
                 ))}
               </div>
-            ) : (
+            ) : viewMode === 'list' ? (
               <div className="flex flex-col gap-4">
                 {events.map((event, index) => (
                   <motion.div
@@ -392,10 +404,160 @@ export default function Home() {
                   </motion.div>
                 ))}
               </div>
+            ) : (
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8">
+                {/* Calendar Header */}
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-bold text-white">
+                    {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+                  </h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-px bg-white/10 rounded-xl overflow-hidden border border-white/10">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="bg-[#0f1021] py-3 text-center text-sm font-semibold text-gray-400">
+                      {day}
+                    </div>
+                  ))}
+                  {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() }).map((_, i) => (
+                    <div key={`blank-${i}`} className="bg-[#050511]/50 h-32" />
+                  ))}
+                  {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
+                    const day = i + 1;
+                    const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                    const dayEvents = events.filter(event =>
+                      event.timeSlots?.some(slot => {
+                        const start = new Date(slot.startAt);
+                        return start.getDate() === day &&
+                          start.getMonth() === currentDate.getMonth() &&
+                          start.getFullYear() === currentDate.getFullYear();
+                      })
+                    );
+
+                    const displayEvents = dayEvents.slice(0, 2);
+                    const remainingCount = dayEvents.length - displayEvents.length;
+
+                    return (
+                      <div key={day} className="bg-[#0f1021] h-32 p-2 flex flex-col gap-1 border-t border-white/5 relative group hover:bg-white/[0.02] transition-colors">
+                        <span className={`text-sm font-medium ${dayEvents.length > 0 ? 'text-indigo-400' : 'text-gray-500'}`}>
+                          {day}
+                        </span>
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          {displayEvents.map(event => (
+                            <button
+                              key={event.id}
+                              onClick={() => setSelectedEvent(event)}
+                              className="text-[10px] sm:text-xs text-left px-1.5 py-1 rounded bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 truncate hover:bg-indigo-500/40 transition-colors"
+                            >
+                              {event.title}
+                            </button>
+                          ))}
+                          {remainingCount > 0 && (
+                            <button
+                              onClick={() => setSelectedDateEvents({ date: dayDate, events: dayEvents })}
+                              className="text-[10px] sm:text-xs text-left px-1.5 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-colors font-medium"
+                            >
+                              + {remainingCount} more
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}
       </section>
+
+      {/* Expanded Day View Modal */}
+      <AnimatePresence>
+        {selectedDateEvents && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+            onClick={() => setSelectedDateEvents(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#0f1021] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    {selectedDateEvents.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">{selectedDateEvents.events.length} events scheduled</p>
+                </div>
+                <button
+                  onClick={() => setSelectedDateEvents(null)}
+                  className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-3">
+                {selectedDateEvents.events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-indigo-500/30 transition-all group"
+                  >
+                    <div className="w-16 h-16 rounded-xl bg-indigo-900/50 overflow-hidden shrink-0">
+                      {event.coverImageUrl ? (
+                        <img src={event.coverImageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-indigo-500/20 to-cyan-500/20">
+                          <Ticket className="w-6 h-6 text-white/20" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-white truncate group-hover:text-indigo-400 transition-colors">{event.title}</h4>
+                      <button
+                        onClick={() => {
+                          setSelectedDateEvents(null);
+                          setSelectedEvent(event);
+                        }}
+                        className="text-xs text-indigo-400 font-medium hover:text-indigo-300 mt-1"
+                      >
+                        View Full Details →
+                      </button>
+                    </div>
+                    <a
+                      href={event.url}
+                      className="uni-embed rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition-colors"
+                    >
+                      Tickets
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Event Details Modal overlay */}
       <AnimatePresence>
