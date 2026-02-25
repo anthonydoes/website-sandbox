@@ -125,21 +125,31 @@ export default function Home() {
           <div className="relative left-[calc(50%-11rem)] aspect-1155/678 w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]" />
         </div>
 
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-4xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium mb-8"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            Universe API • Client Sandbox Environment
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-extrabold tracking-tight sm:text-7xl bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-cyan-400"
+            className="text-5xl font-extrabold tracking-tight sm:text-7xl bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-cyan-400 whitespace-nowrap"
           >
-            Discover Events
+            Great North Event Co.
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mt-6 text-lg leading-8 text-gray-300"
+            className="mt-8 text-lg sm:text-xl leading-8 text-gray-400 max-w-2xl mx-auto"
           >
-            Find your next unforgettable experience powered by Universe API. Seamlessly book tickets directly on our platform.
+            Welcome to the official Universe client sandbox. Explore how our API enables you to seamlessly query, design, and orchestrate immersive event experiences directly within your own custom digital environments.
           </motion.p>
         </div>
       </section>
