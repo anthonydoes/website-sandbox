@@ -37,7 +37,7 @@ export default function Home() {
     if (events.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % events.length);
-    }, 4000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [events.length]);
 
@@ -131,41 +131,89 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-[#222222]">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[var(--color-brand)] to-[#D90B38] flex items-center justify-center shadow-lg shadow-[var(--color-brand)]/20">
+              <Ticket className="w-6 h-6 text-white" />
+            </div>
+            <span className="font-bold text-xl tracking-tight bg-linear-to-r from-[#222222] to-[#444444] bg-clip-text text-transparent">Great North Event Co.</span>
+          </div>
+          <div className="hidden md:flex items-center gap-10">
+            <a href="#demo" className="text-sm font-semibold text-[#222222] hover:text-[var(--color-brand)] transition-colors relative group">
+              Demo
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-brand)] transition-all duration-300 group-hover:w-full" />
+            </a>
+            <a href="/documentation" onClick={(e) => e.preventDefault()} className="text-sm font-semibold text-[#717171] hover:text-[#222222] transition-colors">
+              Documentation
+            </a>
+            <a
+              href="https://www.universe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-2.5 rounded-full bg-[#222222] text-white text-sm font-bold hover:bg-black transition-all hover:scale-105 active:scale-95 shadow-lg shadow-black/10"
+            >
+              Universe
+            </a>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="relative px-6 py-20 sm:py-28 lg:px-8 overflow-hidden bg-white">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium mb-8"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Universe API • Client Sandbox Environment
-          </motion.div>
+      <section className="relative px-6 pt-40 pb-24 sm:pt-52 sm:pb-32 lg:px-8 overflow-hidden bg-white">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-[var(--color-brand)] opacity-[0.08] blur-[100px] rounded-full" />
+          <div className="absolute top-1/2 -right-48 w-[500px] h-[500px] bg-indigo-500 opacity-[0.05] blur-[120px] rounded-full -translate-y-1/2" />
+          <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-25" />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
+
 
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-extrabold tracking-tight sm:text-7xl text-[#222222] whitespace-nowrap"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-6xl font-black tracking-tighter sm:text-8xl text-[#222222] mb-8"
           >
-            Great North Event Co.
+            Elevate Your <span className="text-[var(--color-brand)]">Events.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mt-6 text-lg sm:text-xl leading-8 text-[#717171] max-w-2xl mx-auto font-light"
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="text-xl sm:text-2xl leading-relaxed text-[#717171] max-w-3xl mx-auto font-medium"
           >
-            Welcome to the un-official Universe client events website sandbox. Explore how our API enables you to seamlessly query, design, and orchestrate immersive event experiences directly within your own custom digital environments.
+            A high-performance demonstration of Universe's GraphQL API. Secure, scalable, and designed for teams who refuse to compromise on user experience.
           </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-12 flex items-center justify-center gap-6"
+          >
+            <a
+              href="#demo"
+              className="shimmer-button px-10 py-5 rounded-2xl bg-[#222222] text-white font-bold text-lg hover:bg-black transition-all hover:scale-105 active:scale-95 shadow-xl shadow-black/10"
+            >
+              Explore Demo
+            </a>
+            <div className="hidden sm:block w-px h-12 bg-gray-200" />
+            <p className="hidden sm:block text-left text-sm text-[#717171] font-medium max-w-[180px]">
+              Scroll down to see the real-time event integration in action.
+            </p>
+          </motion.div>
         </div>
       </section>
 
       {/* Hero Carousel */}
       {!loading && !error && events.length > 0 && (
-        <section className="mx-auto max-w-7xl px-6 lg:px-8 mb-16">
-          <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden group rounded-3xl border border-gray-200 shadow-2xl shadow-gray-200/50">
+        <section id="demo" className="mx-auto max-w-7xl px-6 lg:px-8 mb-16 scroll-mt-24">
+          <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden group rounded-[2.5rem] border border-gray-200 shadow-2xl shadow-gray-200/50">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide}
