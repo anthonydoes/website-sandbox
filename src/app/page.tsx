@@ -27,6 +27,11 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date, events: Event[] } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -119,6 +124,10 @@ export default function Home() {
       </div>
     );
   };
+
+  if (!mounted) {
+    return <main className="min-h-screen bg-white" />;
+  }
 
   return (
     <main className="min-h-screen bg-white text-[#222222]">
