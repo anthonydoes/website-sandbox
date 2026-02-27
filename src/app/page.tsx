@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard, Accessibility, ChevronDown } from 'lucide-react';
+import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard, Accessibility, ChevronDown, MapPin } from 'lucide-react';
 
 interface TimeSlot {
   startAt: string;
@@ -24,6 +24,8 @@ interface Event {
   maxPrice?: number;
   ticketsSold?: number;
   capacity?: number;
+  address?: string;
+  venueName?: string;
 }
 
 export default function Home() {
@@ -770,7 +772,21 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Row 2: Price and Availability (Two columns) */}
+                        {/* Row 2: Location (Full width) */}
+                        {(selectedEvent.venueName || selectedEvent.address) && (
+                          <div className="space-y-1 border-t border-gray-200/50 pt-5">
+                            <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Location</span>
+                            <div className="flex items-start gap-2 text-[#222222]">
+                              <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+                              <div className="flex flex-col">
+                                {selectedEvent.venueName && <span className="font-bold">{selectedEvent.venueName}</span>}
+                                {selectedEvent.address && <span className="text-sm text-[#717171]">{selectedEvent.address}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Row 3: Price and Availability (Two columns) */}
                         <div className="grid grid-cols-2 gap-6 border-t border-gray-200/50 pt-5">
                           <div className="space-y-1">
                             <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Pricing</span>

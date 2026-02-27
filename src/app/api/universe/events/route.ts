@@ -66,6 +66,8 @@ export async function GET() {
                 ticketsSold
                 capacity
                 upcomingTotalCapacity
+                address
+                venueName
                 timeSlots {
                   nodes(limit: 1000, offset: 0) {
                     startAt
@@ -104,6 +106,8 @@ export async function GET() {
         ...event,
         capacity: aggregatedCapacity,
         ticketsSold: aggregatedSold,
+        address: event.address,
+        venueName: event.venueName,
         coverImageUrl: event.coverPhoto?.url || null,
         eventPhotoUrl: event.eventPhoto?.url || null,
         additionalImages: (event.additionalImages || []).map((img: any) => img.url),
