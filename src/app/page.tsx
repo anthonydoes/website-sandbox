@@ -20,6 +20,10 @@ interface Event {
   accessibilityDescription?: string;
   eventPhotoUrl?: string;
   additionalImages?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  ticketsSold?: number;
+  capacity?: number;
 }
 
 export default function Home() {
@@ -130,6 +134,32 @@ export default function Home() {
         <span className="text-sm text-[var(--color-brand)]">Multiple timeslots available</span>
       </div>
     );
+  };
+
+  const formatPrice = (min?: number, max?: number) => {
+    if (min === undefined || min === null) return 'Free';
+    if (min === 0 && (max === 0 || max === undefined)) return 'Free';
+
+    const fmt = (val: number) => new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(val);
+
+    if (max && max > min) {
+      return `${fmt(min)} - ${fmt(max)}`;
+    }
+    return fmt(min);
+  };
+
+  const getAvailabilityLabel = (sold?: number, capacity?: number) => {
+    if (capacity === undefined || capacity === null || capacity === 0) return null;
+    const ratio = (sold || 0) / capacity;
+    if (ratio >= 1) return { label: 'Sold Out', color: 'text-gray-500' };
+    if (ratio >= 0.8) return { label: 'Selling Fast', color: 'text-orange-600' };
+    if (ratio >= 0.5) return { label: 'Limited Availability', color: 'text-amber-600' };
+    return { label: 'Good Availability', color: 'text-emerald-600' };
   };
 
   if (!mounted) {
@@ -388,15 +418,31 @@ export default function Home() {
                       </h3>
 
                       {event.timeSlots && event.timeSlots.length > 0 && (
-                        <div className="flex items-start gap-2 mb-6 text-[#717171]">
-                          <Calendar className="w-4 h-4 mt-1 shrink-0 text-gray-400" />
+                        <div className="flex items-start gap-2 mb-3 text-[#717171]">
+                          <Calendar className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
                           <div className="flex-1 text-sm font-medium">
                             {renderTimeSlots(event.timeSlots)}
                           </div>
                         </div>
                       )}
 
-                      <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                      <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-[#222222]">
+                            {formatPrice(event.minPrice, event.maxPrice)}
+                          </span>
+                          {(() => {
+                            const avail = getAvailabilityLabel(event.ticketsSold, event.capacity);
+                            return avail && (
+                              <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${avail.color}`}>
+                                {avail.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex flex-col sm:flex-row gap-3">
                         <button
                           onClick={() => setSelectedEvent(event)}
                           className="flex-1 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-[#222222] hover:bg-gray-50 border border-gray-200 hover:border-gray-900 transition-colors"
@@ -443,13 +489,26 @@ export default function Home() {
                         {event.title}
                       </h3>
                       {event.timeSlots && event.timeSlots.length > 0 && (
-                        <div className="flex items-center gap-2 text-[#717171]">
-                          <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
-                          <div className="truncate text-sm font-medium">
+                        <div className="flex items-center gap-2 text-[#717171] mb-1">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          <div className="text-sm">
                             {renderTimeSlots(event.timeSlots)}
                           </div>
                         </div>
                       )}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-[#222222]">
+                          {formatPrice(event.minPrice, event.maxPrice)}
+                        </span>
+                        {(() => {
+                          const avail = getAvailabilityLabel(event.ticketsSold, event.capacity);
+                          return avail && (
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${avail.color}`}>
+                              • {avail.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       {event.ageLimit && (
                         <div className="mt-2 text-xs font-bold text-[var(--color-brand)] uppercase tracking-wider flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)]" />
@@ -698,11 +757,36 @@ export default function Home() {
               {/* Modal Content - Scrollable */}
               <div className="px-6 sm:px-8 pb-8 pt-6 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
                 {selectedEvent.timeSlots && selectedEvent.timeSlots.length > 0 && (
-                  <div className="flex items-start gap-3 mb-8 text-gray-900 bg-gray-100 p-5 rounded-2xl border border-gray-200 shadow-sm">
+                  <div className="flex items-start gap-3 mb-8 text-gray-900 bg-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
                     <Calendar className="w-5 h-5 mt-0.5 shrink-0 text-[var(--color-brand)]" />
                     <div className="flex flex-col gap-1 w-full text-sm">
-                      <span className="font-bold text-[#222222]">Event Times</span>
-                      {renderTimeSlots(selectedEvent.timeSlots)}
+                      <span className="font-bold text-[#222222] text-lg mb-4">Event Details</span>
+                      <div className="space-y-6">
+                        {/* Row 1: Time & Date (Full width) */}
+                        <div className="space-y-1">
+                          <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Time & Date</span>
+                          <div className="text-[#222222]">
+                            {renderTimeSlots(selectedEvent.timeSlots)}
+                          </div>
+                        </div>
+
+                        {/* Row 2: Price and Availability (Two columns) */}
+                        <div className="grid grid-cols-2 gap-6 border-t border-gray-200/50 pt-5">
+                          <div className="space-y-1">
+                            <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Pricing</span>
+                            <span className="font-bold text-[#222222]">{formatPrice(selectedEvent.minPrice, selectedEvent.maxPrice)}</span>
+                          </div>
+                          {(() => {
+                            const avail = getAvailabilityLabel(selectedEvent.ticketsSold, selectedEvent.capacity);
+                            return avail && (
+                              <div className="space-y-1">
+                                <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Availability</span>
+                                <span className={`font-bold ${avail.color}`}>{avail.label}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

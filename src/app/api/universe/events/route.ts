@@ -61,10 +61,19 @@ export async function GET() {
                 coverPhoto {
                   url(width: 1200, height: 800)
                 }
+                minPrice
+                maxPrice
+                ticketsSold
+                capacity
+                upcomingTotalCapacity
                 timeSlots {
                   nodes(limit: 1000, offset: 0) {
                     startAt
                     endAt
+                    capacity
+                    attendees {
+                      totalCount
+                    }
                   }
                 }
               }
@@ -79,13 +88,28 @@ export async function GET() {
     console.log('Fetching events from Universe...');
     const data: any = await client.request(query, variables);
 
-    const events = (data.host?.events?.nodes || []).map((event: any) => ({
-      ...event,
-      coverImageUrl: event.coverPhoto?.url || null,
-      eventPhotoUrl: event.eventPhoto?.url || null,
-      additionalImages: (event.additionalImages || []).map((img: any) => img.url),
-      timeSlots: event.timeSlots?.nodes || []
-    }));
+    const events = (data.host?.events?.nodes || []).map((event: any) => {
+      // Calculate capacity and tickets sold
+      // Fallback logic for timed entry events where top-level capacity might be null
+      let aggregatedCapacity = event.capacity || event.upcomingTotalCapacity || 0;
+      let aggregatedSold = event.ticketsSold || 0;
+
+      // If top-level capacity is 0/null but there are timeslots, try to aggregate
+      if ((!aggregatedCapacity || aggregatedCapacity === 0) && event.timeSlots?.nodes?.length > 0) {
+        aggregatedCapacity = event.timeSlots.nodes.reduce((sum: number, ts: any) => sum + (ts.capacity || 0), 0);
+        aggregatedSold = event.timeSlots.nodes.reduce((sum: number, ts: any) => sum + (ts.attendees?.totalCount || 0), 0);
+      }
+
+      return {
+        ...event,
+        capacity: aggregatedCapacity,
+        ticketsSold: aggregatedSold,
+        coverImageUrl: event.coverPhoto?.url || null,
+        eventPhotoUrl: event.eventPhoto?.url || null,
+        additionalImages: (event.additionalImages || []).map((img: any) => img.url),
+        timeSlots: event.timeSlots?.nodes || []
+      };
+    });
 
     // Sort events chronologically by their earliest timeslot start time
     events.sort((a: any, b: any) => {
