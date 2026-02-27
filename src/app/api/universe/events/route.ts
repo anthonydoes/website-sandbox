@@ -51,6 +51,7 @@ export async function GET() {
                 url
                 description(format: HTML)
                 ageLimit
+                accessibilityDescription(format: HTML)
                 coverPhoto {
                   url(width: 1200, height: 800)
                 }

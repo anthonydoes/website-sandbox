@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard } from 'lucide-react';
+import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard, Accessibility, ChevronDown } from 'lucide-react';
 
 interface TimeSlot {
   startAt: string;
@@ -17,6 +17,7 @@ interface Event {
   coverImageUrl?: string;
   timeSlots?: TimeSlot[];
   ageLimit?: string;
+  accessibilityDescription?: string;
 }
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date, events: Event[] } | null>(null);
+  const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -632,7 +634,10 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto"
-            onClick={() => setSelectedEvent(null)}
+            onClick={() => {
+              setSelectedEvent(null);
+              setIsAccessibilityOpen(false);
+            }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -643,7 +648,10 @@ export default function Home() {
             >
               {/* Close Button */}
               <button
-                onClick={() => setSelectedEvent(null)}
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setIsAccessibilityOpen(false);
+                }}
                 className="absolute top-4 right-4 z-10 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors backdrop-blur-md"
               >
                 <X className="w-5 h-5" />
@@ -694,14 +702,42 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-
                 {selectedEvent.description && (
                   <div
-                    className="description-content text-sm sm:text-base whitespace-pre-line text-[#222222]"
+                    className="description-content text-sm sm:text-base text-[#222222] mb-8"
                     dangerouslySetInnerHTML={{
                       __html: selectedEvent.description
                     }}
                   />
+                )}
+
+                {selectedEvent.accessibilityDescription && (
+                  <div className="mb-8 border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/30">
+                    <button
+                      onClick={() => setIsAccessibilityOpen(!isAccessibilityOpen)}
+                      className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                          <Accessibility className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <span className="font-bold text-[#222222] text-sm">Accessibility Information</span>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isAccessibilityOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <motion.div
+                      initial={false}
+                      animate={{ height: isAccessibilityOpen ? 'auto' : 0, opacity: isAccessibilityOpen ? 1 : 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-5 pt-0">
+                        <div
+                          className="description-content text-sm leading-relaxed max-w-none"
+                          dangerouslySetInnerHTML={{ __html: selectedEvent.accessibilityDescription }}
+                        />
+                      </div>
+                    </motion.div>
+                  </div>
                 )}
               </div>
 
