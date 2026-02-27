@@ -52,6 +52,12 @@ export async function GET() {
                 description(format: HTML)
                 ageLimit
                 accessibilityDescription(format: HTML)
+                eventPhoto {
+                  url(width: 400, height: 400)
+                }
+                additionalImages {
+                  url(width: 1200, height: 800)
+                }
                 coverPhoto {
                   url(width: 1200, height: 800)
                 }
@@ -76,6 +82,8 @@ export async function GET() {
     const events = (data.host?.events?.nodes || []).map((event: any) => ({
       ...event,
       coverImageUrl: event.coverPhoto?.url || null,
+      eventPhotoUrl: event.eventPhoto?.url || null,
+      additionalImages: (event.additionalImages || []).map((img: any) => img.url),
       timeSlots: event.timeSlots?.nodes || []
     }));
 

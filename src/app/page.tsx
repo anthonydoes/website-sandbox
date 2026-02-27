@@ -18,6 +18,8 @@ interface Event {
   timeSlots?: TimeSlot[];
   ageLimit?: string;
   accessibilityDescription?: string;
+  eventPhotoUrl?: string;
+  additionalImages?: string[];
 }
 
 export default function Home() {
@@ -30,6 +32,8 @@ export default function Home() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date, events: Event[] } | null>(null);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
+  const [galleryPage, setGalleryPage] = useState(0);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -651,11 +655,23 @@ export default function Home() {
                 onClick={() => {
                   setSelectedEvent(null);
                   setIsAccessibilityOpen(false);
+                  setGalleryPage(0);
                 }}
-                className="absolute top-4 right-4 z-10 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors backdrop-blur-md"
+                className="absolute top-4 right-4 z-20 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors backdrop-blur-md"
               >
                 <X className="w-5 h-5" />
               </button>
+
+              {/* Brand Icon (Top Left) */}
+              {selectedEvent.eventPhotoUrl && (
+                <div className="absolute top-4 left-4 z-20 border-2 border-white/30 rounded-full overflow-hidden shadow-xl backdrop-blur-md">
+                  <img
+                    src={selectedEvent.eventPhotoUrl}
+                    alt="Event logo"
+                    className="w-[100px] h-[100px] object-cover bg-white"
+                  />
+                </div>
+              )}
 
               {/* Modal Cover Image */}
               <div className="w-full h-64 sm:h-80 relative shrink-0 bg-gray-100">
@@ -673,7 +689,7 @@ export default function Home() {
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
 
                 <div className="absolute bottom-0 left-0 p-6 sm:p-8 w-full">
-                  <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2 leading-tight">
+                  <h2 className="text-2xl sm:text-4xl font-bold text-white mb-2 leading-tight flex-1">
                     {selectedEvent.title}
                   </h2>
                 </div>
@@ -739,6 +755,65 @@ export default function Home() {
                     </motion.div>
                   </div>
                 )}
+
+                {selectedEvent.additionalImages && selectedEvent.additionalImages.length > 0 && (
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xs font-bold text-[#717171] uppercase tracking-widest">Photo Gallery</h3>
+                      {selectedEvent.additionalImages.length > 2 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGalleryPage(prev => Math.max(0, prev - 1));
+                            }}
+                            disabled={galleryPage === 0}
+                            className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGalleryPage(prev => Math.min(Math.ceil(selectedEvent.additionalImages!.length / 2) - 1, prev + 1));
+                            }}
+                            disabled={galleryPage >= Math.ceil(selectedEvent.additionalImages.length / 2) - 1}
+                            className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative overflow-hidden min-h-[120px]">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={galleryPage}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.2 }}
+                          className="grid grid-cols-2 gap-3 sm:gap-4"
+                        >
+                          {selectedEvent.additionalImages.slice(galleryPage * 2, galleryPage * 2 + 2).map((imageUrl, index) => (
+                            <div
+                              key={`${galleryPage}-${index}`}
+                              className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 border border-gray-100 group cursor-zoom-in"
+                              onClick={() => setFullScreenImage(imageUrl)}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`${selectedEvent.title} gallery ${galleryPage * 2 + index + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                            </div>
+                          ))}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer (Sticky) */}
@@ -750,6 +825,39 @@ export default function Home() {
                   Get Tickets
                 </a>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {fullScreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 sm:p-8"
+            onClick={() => setFullScreenImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-5xl w-full h-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setFullScreenImage(null)}
+                className="absolute top-0 right-0 p-3 text-white/70 hover:text-white transition-colors z-10"
+              >
+                <X className="w-8 h-8" />
+              </button>
+              <img
+                src={fullScreenImage}
+                alt="Full screen gallery"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              />
             </motion.div>
           </motion.div>
         )}
