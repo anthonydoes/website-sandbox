@@ -5,6 +5,12 @@ import axios from 'axios';
 let accessToken: string | null = null;
 let tokenExpiration: number | null = null;
 
+// Simple in-memory cache for the events list
+let cachedEventsList: { data: any, timestamp: number } | null = null;
+const CACHE_DURATION = 60 * 1000; // 60 seconds
+const DETAIL_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const cachedEventDetails = new Map<string, { data: any; timestamp: number }>();
+
 async function getAccessToken(): Promise<string> {
   if (accessToken && tokenExpiration && tokenExpiration > Date.now()) {
     console.log('Reusing cached access token.');
@@ -29,7 +35,11 @@ async function getAccessToken(): Promise<string> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const hostId = "63ea8385a8d65900205da7a4";
+  const eventId = searchParams.get('eventId');
+
   try {
     const token = await getAccessToken();
 
@@ -40,93 +50,154 @@ export async function GET() {
       },
     });
 
-    const query = gql`
-      query GetEvents($hostId: ID!) {
-        host(id: $hostId) {
-          events(states: [POSTED]) {
-            totalCount
+    // 1. Handle Detail View
+    if (eventId) {
+      const cachedDetail = cachedEventDetails.get(eventId);
+      if (cachedDetail && (Date.now() - cachedDetail.timestamp < DETAIL_CACHE_DURATION)) {
+        console.log(`Returning cached detail for event: ${eventId}`);
+        return NextResponse.json(cachedDetail.data);
+      }
+
+      console.log(`Fetching detail for event: ${eventId}`);
+      const detailQuery = gql`
+        query GetEventDetail($id: ID!) {
+          event(id: $id) {
+            id
+            title
+            url
+            description(format: HTML)
+            ageLimit
+            accessibilityDescription(format: HTML)
+            eventPhoto {
+              url(width: 400, height: 400)
+            }
+            additionalImages {
+              url(width: 1200, height: 800)
+            }
+            coverPhoto {
+              url(width: 1200, height: 800)
+            }
+            minPrice
+            maxPrice
+            ticketsSold
+            soldOut
+            allowWaitlist
+            capacity
+            upcomingTotalCapacity
+            address
+            venueName
+            timeSlots {
               nodes(limit: 50, offset: 0) {
-                id
-                title
-                url
-                description(format: HTML)
-                ageLimit
-                accessibilityDescription(format: HTML)
-                eventPhoto {
-                  url(width: 400, height: 400)
-                }
-                additionalImages {
-                  url(width: 1200, height: 800)
-                }
-                coverPhoto {
-                  url(width: 1200, height: 800)
-                }
-                minPrice
-                maxPrice
-                ticketsSold
-                capacity
-                upcomingTotalCapacity
-                address
-                venueName
-                timeSlots {
-                  nodes(limit: 1000, offset: 0) {
-                    startAt
-                    endAt
-                    capacity
-                    attendees {
-                      totalCount
-                    }
-                  }
-                }
+                startAt
+                endAt
               }
+            }
           }
         }
-      }
-    `;
+      `;
 
-    // Using the host ID provided in the requirements
-    const variables = { hostId: "63ea8385a8d65900205da7a4" };
+      const detailData: any = await client.request(detailQuery, { id: eventId });
+      const event = detailData.event;
 
-    console.log('Fetching events from Universe...');
-    const data: any = await client.request(query, variables);
-
-    const events = (data.host?.events?.nodes || []).map((event: any) => {
-      // Calculate capacity and tickets sold
-      // Fallback logic for timed entry events where top-level capacity might be null
-      let aggregatedCapacity = event.capacity || event.upcomingTotalCapacity || 0;
-      let aggregatedSold = event.ticketsSold || 0;
-
-      // If top-level capacity is 0/null but there are timeslots, try to aggregate
-      if ((!aggregatedCapacity || aggregatedCapacity === 0) && event.timeSlots?.nodes?.length > 0) {
-        aggregatedCapacity = event.timeSlots.nodes.reduce((sum: number, ts: any) => sum + (ts.capacity || 0), 0);
-        aggregatedSold = event.timeSlots.nodes.reduce((sum: number, ts: any) => sum + (ts.attendees?.totalCount || 0), 0);
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
       }
 
-      return {
+      const detailResponse = {
         ...event,
-        capacity: aggregatedCapacity,
-        ticketsSold: aggregatedSold,
-        address: event.address,
-        venueName: event.venueName,
+        capacity: event.capacity || event.upcomingTotalCapacity || 0,
+        ticketsSold: event.ticketsSold || 0,
+        soldOut: Boolean(event.soldOut),
+        allowWaitlist: Boolean(event.allowWaitlist),
         coverImageUrl: event.coverPhoto?.url || null,
         eventPhotoUrl: event.eventPhoto?.url || null,
         additionalImages: (event.additionalImages || []).map((img: any) => img.url),
         timeSlots: event.timeSlots?.nodes || []
       };
+
+      cachedEventDetails.set(eventId, { data: detailResponse, timestamp: Date.now() });
+      return NextResponse.json(detailResponse);
+    }
+
+    // 2. Handle List View (with caching)
+    if (cachedEventsList && (Date.now() - cachedEventsList.timestamp < CACHE_DURATION)) {
+      console.log('Returning cached events list');
+      return NextResponse.json(cachedEventsList.data);
+    }
+
+    const listQuery = gql`
+      query GetEvents($hostId: ID!) {
+        host(id: $hostId) {
+          events(states: [POSTED]) {
+            totalCount
+            nodes(limit: 50, offset: 0) {
+              id
+              title
+              url
+              ageLimit
+              eventPhoto {
+                url(width: 400, height: 400)
+              }
+              coverPhoto {
+                url(width: 800, height: 400)
+              }
+              minPrice
+              maxPrice
+              ticketsSold
+              soldOut
+              allowWaitlist
+              capacity
+              upcomingTotalCapacity
+              timeSlots {
+                nodes(limit: 5, offset: 0) {
+                  startAt
+                  endAt
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    console.log('Fetching lightweight events list from Universe...');
+    const data: any = await client.request(listQuery, { hostId });
+
+    const events = (data.host?.events?.nodes || []).map((event: any) => {
+      const aggregatedCapacity = event.capacity || event.upcomingTotalCapacity || 0;
+      const aggregatedSold = event.ticketsSold || 0;
+
+      // Note: In list view, we only check the first 5 timeslots for a rough date display
+      // If we need perfectly accurate aggregated capacity for ALL events in the grid, 
+      // we'd still need to fetch all node counts, but that's what makes it slow.
+      // For now, we use upcomingTotalCapacity as the primary source for the grid.
+
+      return {
+        ...event,
+        capacity: aggregatedCapacity,
+        ticketsSold: aggregatedSold,
+        soldOut: Boolean(event.soldOut),
+        allowWaitlist: Boolean(event.allowWaitlist),
+        coverImageUrl: event.coverPhoto?.url || null,
+        eventPhotoUrl: event.eventPhoto?.url || null,
+        timeSlots: event.timeSlots?.nodes || []
+      };
     });
 
-    // Sort events chronologically by their earliest timeslot start time
+    // Sort events chronologically
     events.sort((a: any, b: any) => {
       const getEarliestStart = (item: any) => {
         if (!item.timeSlots || item.timeSlots.length === 0) return Infinity;
         const starts = item.timeSlots.map((ts: any) => new Date(ts.startAt).getTime());
         return Math.min(...starts);
       };
-
       return getEarliestStart(a) - getEarliestStart(b);
     });
 
-    return NextResponse.json({ events, totalCount: data.host?.events?.totalCount || 0 });
+    const responseData = { events, totalCount: data.host?.events?.totalCount || 0 };
+    cachedEventsList = { data: responseData, timestamp: Date.now() };
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('API Route Error:', error.message);
     return NextResponse.json(

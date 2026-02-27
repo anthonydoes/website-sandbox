@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard, Accessibility, ChevronDown, MapPin } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface TimeSlot {
 interface Event {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   url: string;
   coverImageUrl?: string;
   timeSlots?: TimeSlot[];
@@ -23,6 +23,8 @@ interface Event {
   minPrice?: number;
   maxPrice?: number;
   ticketsSold?: number;
+  soldOut?: boolean;
+  allowWaitlist?: boolean;
   capacity?: number;
   address?: string;
   venueName?: string;
@@ -41,6 +43,69 @@ export default function Home() {
   const [galleryPage, setGalleryPage] = useState(0);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const detailCacheRef = useRef<Map<string, Event>>(new Map());
+  const inFlightDetailRequestsRef = useRef<Map<string, Promise<Event>>>(new Map());
+
+  const loadEventDetails = useCallback(async (eventId: string): Promise<Event> => {
+    const cached = detailCacheRef.current.get(eventId);
+    if (cached) {
+      return cached;
+    }
+
+    const pending = inFlightDetailRequestsRef.current.get(eventId);
+    if (pending) {
+      return pending;
+    }
+
+    const requestPromise = fetch(`/api/universe/events?eventId=${eventId}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch details');
+        }
+        const fullEvent = await response.json();
+        detailCacheRef.current.set(eventId, fullEvent);
+        return fullEvent;
+      })
+      .finally(() => {
+        inFlightDetailRequestsRef.current.delete(eventId);
+      });
+
+    inFlightDetailRequestsRef.current.set(eventId, requestPromise);
+    return requestPromise;
+  }, []);
+
+  const prefetchEventDetails = useCallback((event: Event) => {
+    if (!event?.id || detailCacheRef.current.has(event.id) || inFlightDetailRequestsRef.current.has(event.id)) {
+      return;
+    }
+
+    loadEventDetails(event.id).catch((err) => {
+      console.error('Error prefetching event details:', err);
+    });
+  }, [loadEventDetails]);
+
+  const fetchEventDetails = async (event: Event) => {
+    const cachedDetails = detailCacheRef.current.get(event.id);
+    if (cachedDetails) {
+      setSelectedEvent({ ...event, ...cachedDetails });
+      return;
+    }
+
+    setIsDetailLoading(true);
+    setSelectedEvent(event);
+
+    try {
+      const fullEvent = await loadEventDetails(event.id);
+      const mergedEvent = { ...event, ...fullEvent };
+      detailCacheRef.current.set(event.id, mergedEvent);
+      setSelectedEvent(mergedEvent);
+    } catch (err) {
+      console.error('Error fetching event details:', err);
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -70,8 +135,8 @@ export default function Home() {
         if (!response.ok) throw new Error(data.error || 'Failed to load events');
 
         setEvents(data.events || []);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load events');
       } finally {
         setLoading(false);
       }
@@ -155,7 +220,24 @@ export default function Home() {
     return fmt(min);
   };
 
-  const getAvailabilityLabel = (sold?: number, capacity?: number) => {
+  const isEventSoldOut = (event: Event) => {
+    if (event.soldOut) return true;
+    if (event.capacity === undefined || event.capacity === null || event.capacity === 0) return false;
+    return (event.ticketsSold || 0) >= event.capacity;
+  };
+
+  const shouldUseWaitlist = (event: Event) => isEventSoldOut(event) && Boolean(event.allowWaitlist);
+
+  const shouldDisableTicketsButton = (event: Event) => isEventSoldOut(event) && !event.allowWaitlist;
+
+  const getTicketButtonLabel = (event: Event) => {
+    if (shouldUseWaitlist(event)) return 'Join Waitlist';
+    if (shouldDisableTicketsButton(event)) return 'Sold Out';
+    return 'Get Tickets';
+  };
+
+  const getAvailabilityLabel = (sold?: number, capacity?: number, soldOut?: boolean) => {
+    if (soldOut) return { label: 'Sold Out', color: 'text-gray-500' };
     if (capacity === undefined || capacity === null || capacity === 0) return null;
     const ratio = (sold || 0) / capacity;
     if (ratio >= 1) return { label: 'Sold Out', color: 'text-gray-500' };
@@ -295,17 +377,29 @@ export default function Home() {
 
                         <div className="flex flex-wrap gap-4">
                           <button
-                            onClick={() => setSelectedEvent(events[currentSlide])}
+                            onClick={() => fetchEventDetails(events[currentSlide])}
+                            onMouseEnter={() => prefetchEventDetails(events[currentSlide])}
+                            onFocus={() => prefetchEventDetails(events[currentSlide])}
                             className="px-8 py-4 rounded-xl bg-white text-[#222222] hover:bg-gray-50 font-semibold transition-all duration-200 shadow-sm"
                           >
                             More Info
                           </button>
-                          <a
-                            href={events[currentSlide].url}
-                            className="uni-embed px-8 py-4 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold transition-all duration-200 shadow-sm"
-                          >
-                            Get Tickets
-                          </a>
+                          {shouldDisableTicketsButton(events[currentSlide]) ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="px-8 py-4 rounded-xl bg-gray-300 text-white font-semibold transition-all duration-200 shadow-sm cursor-not-allowed"
+                            >
+                              Sold Out
+                            </button>
+                          ) : (
+                            <a
+                              href={events[currentSlide].url}
+                              className="uni-embed px-8 py-4 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold transition-all duration-200 shadow-sm"
+                            >
+                              {getTicketButtonLabel(events[currentSlide])}
+                            </a>
+                          )}
                         </div>
                       </motion.div>
                     </div>
@@ -434,7 +528,7 @@ export default function Home() {
                             {formatPrice(event.minPrice, event.maxPrice)}
                           </span>
                           {(() => {
-                            const avail = getAvailabilityLabel(event.ticketsSold, event.capacity);
+                            const avail = getAvailabilityLabel(event.ticketsSold, event.capacity, event.soldOut);
                             return avail && (
                               <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${avail.color}`}>
                                 {avail.label}
@@ -446,17 +540,29 @@ export default function Home() {
 
                       <div className="mt-6 flex flex-col sm:flex-row gap-3">
                         <button
-                          onClick={() => setSelectedEvent(event)}
+                          onClick={() => fetchEventDetails(event)}
+                          onMouseEnter={() => prefetchEventDetails(event)}
+                          onFocus={() => prefetchEventDetails(event)}
                           className="flex-1 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-[#222222] hover:bg-gray-50 border border-gray-200 hover:border-gray-900 transition-colors"
                         >
                           More Info
                         </button>
-                        <a
-                          href={event.url}
-                          className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-3.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
-                        >
-                          Get Tickets
-                        </a>
+                        {shouldDisableTicketsButton(event) ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="flex-1 inline-flex items-center justify-center rounded-xl bg-gray-300 px-6 py-3.5 text-sm font-semibold text-white cursor-not-allowed"
+                          >
+                            Sold Out
+                          </button>
+                        ) : (
+                          <a
+                            href={event.url}
+                            className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-3.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
+                          >
+                            {getTicketButtonLabel(event)}
+                          </a>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -503,7 +609,7 @@ export default function Home() {
                           {formatPrice(event.minPrice, event.maxPrice)}
                         </span>
                         {(() => {
-                          const avail = getAvailabilityLabel(event.ticketsSold, event.capacity);
+                          const avail = getAvailabilityLabel(event.ticketsSold, event.capacity, event.soldOut);
                           return avail && (
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${avail.color}`}>
                               • {avail.label}
@@ -521,17 +627,29 @@ export default function Home() {
 
                     <div className="flex flex-col sm:flex-row gap-3 shrink-0">
                       <button
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => fetchEventDetails(event)}
+                        onMouseEnter={() => prefetchEventDetails(event)}
+                        onFocus={() => prefetchEventDetails(event)}
                         className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-[#222222] hover:bg-gray-50 border border-gray-200 hover:border-gray-900 transition-colors"
                       >
                         More Info
                       </button>
-                      <a
-                        href={event.url}
-                        className="uni-embed inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
-                      >
-                        Get Tickets
-                      </a>
+                      {shouldDisableTicketsButton(event) ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center justify-center rounded-xl bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white cursor-not-allowed"
+                        >
+                          Sold Out
+                        </button>
+                      ) : (
+                        <a
+                          href={event.url}
+                          className="uni-embed inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
+                        >
+                          {getTicketButtonLabel(event)}
+                        </a>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -593,7 +711,9 @@ export default function Home() {
                           {displayEvents.map(event => (
                             <button
                               key={event.id}
-                              onClick={() => setSelectedEvent(event)}
+                              onClick={() => fetchEventDetails(event)}
+                              onMouseEnter={() => prefetchEventDetails(event)}
+                              onFocus={() => prefetchEventDetails(event)}
                               className="text-[10px] sm:text-xs text-left px-1.5 py-1 rounded bg-[var(--color-brand)]/10 border border-[var(--color-brand)]/20 text-[var(--color-brand)] truncate hover:bg-[var(--color-brand)]/20 transition-colors font-medium"
                             >
                               {event.title}
@@ -670,19 +790,31 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setSelectedDateEvents(null);
-                          setSelectedEvent(event);
+                          fetchEventDetails(event);
                         }}
+                        onMouseEnter={() => prefetchEventDetails(event)}
+                        onFocus={() => prefetchEventDetails(event)}
                         className="text-xs text-[#717171] font-medium hover:text-[#222222] mt-1 underline"
                       >
                         View Full Details
                       </button>
                     </div>
-                    <a
-                      href={event.url}
-                      className="uni-embed rounded-lg bg-[var(--color-brand)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
-                    >
-                      Tickets
-                    </a>
+                    {shouldDisableTicketsButton(event) ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="rounded-lg bg-gray-300 px-4 py-2 text-xs font-bold text-white cursor-not-allowed"
+                      >
+                        Sold Out
+                      </button>
+                    ) : (
+                      <a
+                        href={event.url}
+                        className="uni-embed rounded-lg bg-[var(--color-brand)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
+                      >
+                        {getTicketButtonLabel(event)}
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
@@ -758,172 +890,191 @@ export default function Home() {
 
               {/* Modal Content - Scrollable */}
               <div className="px-6 sm:px-8 pb-8 pt-6 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
-                {selectedEvent.timeSlots && selectedEvent.timeSlots.length > 0 && (
-                  <div className="flex items-start gap-3 mb-8 text-gray-900 bg-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
-                    <Calendar className="w-5 h-5 mt-0.5 shrink-0 text-[var(--color-brand)]" />
-                    <div className="flex flex-col gap-1 w-full text-sm">
-                      <span className="font-bold text-[#222222] text-lg mb-4">Event Details</span>
-                      <div className="space-y-6">
-                        {/* Row 1: Time & Date (Full width) */}
-                        <div className="space-y-1">
-                          <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Time & Date</span>
-                          <div className="text-[#222222]">
-                            {renderTimeSlots(selectedEvent.timeSlots)}
-                          </div>
-                        </div>
-
-                        {/* Row 2: Location (Full width) */}
-                        {(selectedEvent.venueName || selectedEvent.address) && (
-                          <div className="space-y-1 border-t border-gray-200/50 pt-5">
-                            <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Location</span>
-                            <div className="flex items-start gap-2 text-[#222222]">
-                              <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
-                              <div className="flex flex-col">
-                                {selectedEvent.venueName && <span className="font-bold">{selectedEvent.venueName}</span>}
-                                {selectedEvent.address && <span className="text-sm text-[#717171]">{selectedEvent.address}</span>}
+                {isDetailLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <div className="w-10 h-10 border-4 border-[var(--color-brand)] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm font-medium text-gray-500">Loading event details...</span>
+                  </div>
+                ) : (
+                  <>
+                    {selectedEvent.timeSlots && selectedEvent.timeSlots.length > 0 && (
+                      <div className="flex items-start gap-3 mb-8 text-gray-900 bg-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
+                        <Calendar className="w-5 h-5 mt-0.5 shrink-0 text-[var(--color-brand)]" />
+                        <div className="flex flex-col gap-1 w-full text-sm">
+                          <span className="font-bold text-[#222222] text-lg mb-4">Event Details</span>
+                          <div className="space-y-6">
+                            {/* Row 1: Time & Date (Full width) */}
+                            <div className="space-y-1">
+                              <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Time & Date</span>
+                              <div className="text-[#222222]">
+                                {renderTimeSlots(selectedEvent.timeSlots)}
                               </div>
                             </div>
-                          </div>
-                        )}
 
-                        {/* Row 3: Price and Availability (Two columns) */}
-                        <div className="grid grid-cols-2 gap-6 border-t border-gray-200/50 pt-5">
-                          <div className="space-y-1">
-                            <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Pricing</span>
-                            <span className="font-bold text-[#222222]">{formatPrice(selectedEvent.minPrice, selectedEvent.maxPrice)}</span>
-                          </div>
-                          {(() => {
-                            const avail = getAvailabilityLabel(selectedEvent.ticketsSold, selectedEvent.capacity);
-                            return avail && (
+                            {/* Row 2: Location (Full width) */}
+                            {(selectedEvent.venueName || selectedEvent.address) && (
+                              <div className="space-y-1 border-t border-gray-200/50 pt-5">
+                                <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Location</span>
+                                <div className="flex items-start gap-2 text-[#222222]">
+                                  <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+                                  <div className="flex flex-col">
+                                    {selectedEvent.venueName && <span className="font-bold">{selectedEvent.venueName}</span>}
+                                    {selectedEvent.address && <span className="text-sm text-[#717171]">{selectedEvent.address}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Row 3: Price and Availability (Two columns) */}
+                            <div className="grid grid-cols-2 gap-6 border-t border-gray-200/50 pt-5">
                               <div className="space-y-1">
-                                <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Availability</span>
-                                <span className={`font-bold ${avail.color}`}>{avail.label}</span>
+                                <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Pricing</span>
+                                <span className="font-bold text-[#222222]">{formatPrice(selectedEvent.minPrice, selectedEvent.maxPrice)}</span>
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedEvent.ageLimit && (
-                  <div className="flex items-center gap-3 mb-8 text-gray-900 bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                      <IdCard className="w-5 h-5 text-amber-700" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-[#222222] text-sm">Age Restriction</span>
-                      <span className="text-gray-600 text-sm font-medium">{selectedEvent.ageLimit}</span>
-                    </div>
-                  </div>
-                )}
-                {selectedEvent.description && (
-                  <div
-                    className="description-content text-sm sm:text-base text-[#222222] mb-8"
-                    dangerouslySetInnerHTML={{
-                      __html: selectedEvent.description
-                    }}
-                  />
-                )}
-
-                {selectedEvent.accessibilityDescription && (
-                  <div className="mb-8 border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/30">
-                    <button
-                      onClick={() => setIsAccessibilityOpen(!isAccessibilityOpen)}
-                      className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                          <Accessibility className="w-4 h-4 text-indigo-600" />
-                        </div>
-                        <span className="font-bold text-[#222222] text-sm">Accessibility Information</span>
-                      </div>
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isAccessibilityOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    <motion.div
-                      initial={false}
-                      animate={{ height: isAccessibilityOpen ? 'auto' : 0, opacity: isAccessibilityOpen ? 1 : 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 pt-0">
-                        <div
-                          className="description-content text-sm leading-relaxed max-w-none"
-                          dangerouslySetInnerHTML={{ __html: selectedEvent.accessibilityDescription }}
-                        />
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-
-                {selectedEvent.additionalImages && selectedEvent.additionalImages.length > 0 && (
-                  <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xs font-bold text-[#717171] uppercase tracking-widest">Photo Gallery</h3>
-                      {selectedEvent.additionalImages.length > 2 && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setGalleryPage(prev => Math.max(0, prev - 1));
-                            }}
-                            disabled={galleryPage === 0}
-                            className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setGalleryPage(prev => Math.min(Math.ceil(selectedEvent.additionalImages!.length / 2) - 1, prev + 1));
-                            }}
-                            disabled={galleryPage >= Math.ceil(selectedEvent.additionalImages.length / 2) - 1}
-                            className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="relative overflow-hidden min-h-[120px]">
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={galleryPage}
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="grid grid-cols-2 gap-3 sm:gap-4"
-                        >
-                          {selectedEvent.additionalImages.slice(galleryPage * 2, galleryPage * 2 + 2).map((imageUrl, index) => (
-                            <div
-                              key={`${galleryPage}-${index}`}
-                              className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 border border-gray-100 group cursor-zoom-in"
-                              onClick={() => setFullScreenImage(imageUrl)}
-                            >
-                              <img
-                                src={imageUrl}
-                                alt={`${selectedEvent.title} gallery ${galleryPage * 2 + index + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
+                              {(() => {
+                                const avail = getAvailabilityLabel(selectedEvent.ticketsSold, selectedEvent.capacity, selectedEvent.soldOut);
+                                return avail && (
+                                  <div className="space-y-1">
+                                    <span className="block text-[10px] font-bold text-[#717171] uppercase tracking-widest">Availability</span>
+                                    <span className={`font-bold ${avail.color}`}>{avail.label}</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.ageLimit && (
+                      <div className="flex items-center gap-3 mb-8 text-gray-900 bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                          <IdCard className="w-5 h-5 text-amber-700" />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-[#222222] text-sm">Age Restriction</span>
+                          <span className="text-gray-600 text-sm font-medium">{selectedEvent.ageLimit}</span>
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.description && (
+                      <div
+                        className="description-content text-sm sm:text-base text-[#222222] mb-8"
+                        dangerouslySetInnerHTML={{
+                          __html: selectedEvent.description
+                        }}
+                      />
+                    )}
+
+                    {selectedEvent.accessibilityDescription && (
+                      <div className="mb-8 border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/30">
+                        <button
+                          onClick={() => setIsAccessibilityOpen(!isAccessibilityOpen)}
+                          className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                              <Accessibility className="w-4 h-4 text-indigo-600" />
+                            </div>
+                            <span className="font-bold text-[#222222] text-sm">Accessibility Information</span>
+                          </div>
+                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isAccessibilityOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <motion.div
+                          initial={false}
+                          animate={{ height: isAccessibilityOpen ? 'auto' : 0, opacity: isAccessibilityOpen ? 1 : 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-5 pb-5 pt-0">
+                            <div
+                              className="description-content text-sm leading-relaxed max-w-none"
+                              dangerouslySetInnerHTML={{ __html: selectedEvent.accessibilityDescription }}
+                            />
+                          </div>
                         </motion.div>
-                      </AnimatePresence>
-                    </div>
-                  </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.additionalImages && selectedEvent.additionalImages.length > 0 && (
+                      <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xs font-bold text-[#717171] uppercase tracking-widest">Photo Gallery</h3>
+                          {selectedEvent.additionalImages.length > 2 && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setGalleryPage(prev => Math.max(0, prev - 1));
+                                }}
+                                disabled={galleryPage === 0}
+                                className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setGalleryPage(prev => Math.min(Math.ceil(selectedEvent.additionalImages!.length / 2) - 1, prev + 1));
+                                }}
+                                disabled={galleryPage >= Math.ceil(selectedEvent.additionalImages.length / 2) - 1}
+                                className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="relative overflow-hidden min-h-[120px]">
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={galleryPage}
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="grid grid-cols-2 gap-3 sm:gap-4"
+                            >
+                              {selectedEvent.additionalImages.slice(galleryPage * 2, galleryPage * 2 + 2).map((imageUrl, index) => (
+                                <div
+                                  key={`${galleryPage}-${index}`}
+                                  className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 border border-gray-100 group cursor-zoom-in"
+                                  onClick={() => setFullScreenImage(imageUrl)}
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`${selectedEvent.title} gallery ${galleryPage * 2 + index + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                </div>
+                              ))}
+                            </motion.div>
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Modal Footer (Sticky) */}
               <div className="p-6 sm:p-8 bg-white border-t border-gray-100 shrink-0 mt-auto">
-                <a
-                  href={selectedEvent.url}
-                  className="uni-embed flex items-center justify-center w-full rounded-xl bg-[var(--color-brand)] px-8 py-4 text-base font-bold text-white shadow-md hover:bg-[var(--color-brand-hover)] transition-colors"
-                >
-                  Get Tickets
-                </a>
+                {shouldDisableTicketsButton(selectedEvent) ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center justify-center w-full rounded-xl bg-gray-300 px-8 py-4 text-base font-bold text-white shadow-md cursor-not-allowed"
+                  >
+                    Sold Out
+                  </button>
+                ) : (
+                  <a
+                    href={selectedEvent.url}
+                    className="uni-embed flex items-center justify-center w-full rounded-xl bg-[var(--color-brand)] px-8 py-4 text-base font-bold text-white shadow-md hover:bg-[var(--color-brand-hover)] transition-colors"
+                  >
+                    {getTicketButtonLabel(selectedEvent)}
+                  </a>
+                )}
               </div>
             </motion.div>
           </motion.div>
