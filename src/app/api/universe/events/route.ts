@@ -45,21 +45,22 @@ export async function GET() {
         host(id: $hostId) {
           events(states: [POSTED]) {
             totalCount
-            nodes(limit: 50, offset: 0) {
-              id
-              title
-              url
-              description(format: HTML)
-              coverPhoto {
-                url(width: 1200, height: 800)
-              }
-              timeSlots {
-                nodes(limit: 1000, offset: 0) {
-                  startAt
-                  endAt
+              nodes(limit: 50, offset: 0) {
+                id
+                title
+                url
+                description(format: HTML)
+                ageLimit
+                coverPhoto {
+                  url(width: 1200, height: 800)
+                }
+                timeSlots {
+                  nodes(limit: 1000, offset: 0) {
+                    startAt
+                    endAt
+                  }
                 }
               }
-            }
           }
         }
       }

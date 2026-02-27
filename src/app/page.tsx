@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, X, Ticket, LayoutGrid, List, CalendarDays, ChevronLeft, ChevronRight, IdCard } from 'lucide-react';
 
 interface TimeSlot {
   startAt: string;
@@ -16,6 +16,7 @@ interface Event {
   url: string;
   coverImageUrl?: string;
   timeSlots?: TimeSlot[];
+  ageLimit?: string;
 }
 
 export default function Home() {
@@ -366,6 +367,13 @@ export default function Home() {
                           <Ticket className="w-12 h-12 text-gray-300" />
                         </div>
                       )}
+                      {event.ageLimit && (
+                        <div className="absolute top-4 right-4 z-10">
+                          <span className="px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md text-[#222222] text-xs font-bold border border-white/20 shadow-lg">
+                            {event.ageLimit}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-6 md:p-8 flex flex-col flex-1">
@@ -434,6 +442,12 @@ export default function Home() {
                           <div className="truncate text-sm font-medium">
                             {renderTimeSlots(event.timeSlots)}
                           </div>
+                        </div>
+                      )}
+                      {event.ageLimit && (
+                        <div className="mt-2 text-xs font-bold text-[var(--color-brand)] uppercase tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)]" />
+                          {event.ageLimit}
                         </div>
                       )}
                     </div>
@@ -665,6 +679,18 @@ export default function Home() {
                     <div className="flex flex-col gap-1 w-full text-sm">
                       <span className="font-bold text-[#222222]">Event Times</span>
                       {renderTimeSlots(selectedEvent.timeSlots)}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.ageLimit && (
+                  <div className="flex items-center gap-3 mb-8 text-gray-900 bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                      <IdCard className="w-5 h-5 text-amber-700" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-[#222222] text-sm">Age Restriction</span>
+                      <span className="text-gray-600 text-sm font-medium">{selectedEvent.ageLimit}</span>
                     </div>
                   </div>
                 )}
