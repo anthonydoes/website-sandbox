@@ -471,7 +471,7 @@ export default function DocumentationPage() {
                 {copied === 'request-url' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 {copied === 'request-url' ? 'Copied URL' : 'Copy URL'}
               </button>
-              {requestResult && (
+              {requestResult !== null && (
                 <button
                   onClick={() => copyText('request-json', JSON.stringify(requestResult, null, 2))}
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors"
@@ -488,7 +488,7 @@ export default function DocumentationPage() {
               </div>
             )}
 
-            {requestResult && (
+            {requestResult !== null && (
               <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#111111] p-5 text-xs sm:text-sm text-gray-100">
                 <code>{JSON.stringify(requestResult, null, 2)}</code>
               </pre>
