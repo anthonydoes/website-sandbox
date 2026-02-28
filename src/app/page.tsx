@@ -321,7 +321,7 @@ export default function Home() {
               Demo
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-brand)] transition-all duration-300 group-hover:w-full" />
             </a>
-            <a href="/documentation" onClick={(e) => e.preventDefault()} className="text-sm font-semibold text-[#717171] hover:text-[#222222] transition-colors">
+            <a href="/documentation" className="text-sm font-semibold text-[#717171] hover:text-[#222222] transition-colors">
               Documentation
             </a>
             <a
