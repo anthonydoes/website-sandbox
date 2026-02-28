@@ -48,7 +48,7 @@ async function getAccessToken() {
         upcomingTotalCapacity
         coverPhoto { url(width: 800, height: 400) }
         eventPhoto { url(width: 400, height: 400) }
-        timeSlots { nodes(limit: 5, offset: 0) { startAt endAt } }
+        timeSlots { nodes(limit: 1000, offset: 0) { startAt endAt } }
       }
     }
   }
@@ -137,7 +137,7 @@ export default function DocumentationPage() {
   const [activeExample, setActiveExample] = useState<ExampleKey>('authFlow');
   const [copied, setCopied] = useState<string | null>(null);
   const [hostIdInput, setHostIdInput] = useState('63ea8385a8d65900205da7a4');
-  const [requestUrl, setRequestUrl] = useState('/api/universe/events?hostId=63ea8385a8d65900205da7a4');
+  const [requestUrl, setRequestUrl] = useState('/api/universe/events?hostId=63ea8385a8d65900205da7a4&timeslotLimit=5');
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestResult, setRequestResult] = useState<unknown>(null);
@@ -160,7 +160,7 @@ export default function DocumentationPage() {
       return;
     }
 
-    const url = `/api/universe/events?hostId=${encodeURIComponent(trimmedHostId)}`;
+    const url = `/api/universe/events?hostId=${encodeURIComponent(trimmedHostId)}&timeslotLimit=5`;
     setRequestUrl(url);
     setRequestError(null);
     setRequestLoading(true);
@@ -225,7 +225,7 @@ export default function DocumentationPage() {
         <div className="grid gap-6 md:grid-cols-3">
           {[
             { title: '1) Authenticate', body: 'Server route requests and caches a Universe OAuth access token (client credentials).' },
-            { title: '2) Fetch Events', body: 'Render fast with lightweight list data, then lazily fetch event details by eventId.' },
+            { title: '2) Fetch Events', body: 'Render fast with list data that includes full timeslot date boundaries, then lazily fetch event details by eventId.' },
             { title: '3) Open Checkout', body: 'Load embed2.js once, trigger checkout via uni-embed links, and show loading until iframe appears.' },
           ].map((item) => (
             <article key={item.title} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -424,7 +424,9 @@ export default function DocumentationPage() {
           <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
             <h3 className="text-xl font-bold">Try This Request</h3>
             <p className="mt-1 text-sm text-[#666]">
-              Enter a Universe host ID to fetch a live event list response from this demo API route.
+              Enter a Universe host ID to fetch a live event list response from this demo API route. This tool uses
+              <code> timeslotLimit=5 </code>
+              to keep response output compact.
             </p>
           </div>
 
@@ -492,8 +494,9 @@ export default function DocumentationPage() {
               API Route Contract
             </h3>
             <ul className="mt-4 space-y-3 text-sm text-[#555]">
-              <li><span className="font-semibold text-[#222]">`GET /api/universe/events`</span>: returns lightweight events list.</li>
+              <li><span className="font-semibold text-[#222]">`GET /api/universe/events`</span>: returns events list with full timeslot date boundaries (`startAt`/`endAt`).</li>
               <li><span className="font-semibold text-[#222]">`GET /api/universe/events?hostId=...`</span>: list request for any host (used by the Try Request widget).</li>
+              <li><span className="font-semibold text-[#222]">`timeslotLimit` (optional)</span>: override list timeslot count per event (docs widget uses `5`).</li>
               <li><span className="font-semibold text-[#222]">`GET /api/universe/events?eventId=...`</span>: returns full detail payload.</li>
               <li><span className="font-semibold text-[#222]">Server caching</span>: list cache (60s), detail cache per event (5m).</li>
               <li><span className="font-semibold text-[#222]">Client caching</span>: detail payload cache + in-flight request dedupe.</li>
@@ -554,13 +557,14 @@ GET /api/universe/events?eventId=<id>`,
               },
               {
                 title: '2) Limit Nested GraphQL Nodes',
-                summary: 'Avoid expensive deep/nested fields in broad list calls.',
+                summary: 'Return all timeslot boundaries for accurate ranges/calendar, but keep slot fields minimal.',
                 example: `# list query
 timeSlots {
-  nodes(limit: 5, offset: 0) { startAt endAt }
+  nodes(limit: 1000, offset: 0) { startAt endAt }
 }
 
-# detail query (still bounded)
+# no attendees/capacity per slot in list query
+# detail query remains separately bounded
 nodes(limit: 50, offset: 0)`,
               },
               {

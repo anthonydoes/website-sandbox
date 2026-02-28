@@ -39,6 +39,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const hostId = searchParams.get('hostId') || "63ea8385a8d65900205da7a4";
   const eventId = searchParams.get('eventId');
+  const requestedTimeslotLimit = Number(searchParams.get('timeslotLimit'));
+  const listTimeslotLimit = Number.isFinite(requestedTimeslotLimit) && requestedTimeslotLimit > 0
+    ? Math.min(Math.floor(requestedTimeslotLimit), 1000)
+    : 1000;
 
   try {
     const token = await getAccessToken();
@@ -120,7 +124,8 @@ export async function GET(request: Request) {
     }
 
     // 2. Handle List View (with caching)
-    const cachedEventsList = cachedEventsListsByHost.get(hostId);
+    const listCacheKey = `${hostId}:${listTimeslotLimit}`;
+    const cachedEventsList = cachedEventsListsByHost.get(listCacheKey);
     if (cachedEventsList && (Date.now() - cachedEventsList.timestamp < CACHE_DURATION)) {
       console.log('Returning cached events list');
       return NextResponse.json(cachedEventsList.data);
@@ -150,7 +155,7 @@ export async function GET(request: Request) {
               capacity
               upcomingTotalCapacity
               timeSlots {
-                nodes(limit: 5, offset: 0) {
+                nodes(limit: ${listTimeslotLimit}, offset: 0) {
                   startAt
                   endAt
                 }
@@ -168,10 +173,10 @@ export async function GET(request: Request) {
       const aggregatedCapacity = event.capacity || event.upcomingTotalCapacity || 0;
       const aggregatedSold = event.ticketsSold || 0;
 
-      // Note: In list view, we only check the first 5 timeslots for a rough date display
-      // If we need perfectly accurate aggregated capacity for ALL events in the grid, 
-      // we'd still need to fetch all node counts, but that's what makes it slow.
-      // For now, we use upcomingTotalCapacity as the primary source for the grid.
+      // We return all timeslot date boundaries (start/end only) so:
+      // 1) timed-entry date ranges render correctly in cards
+      // 2) calendar view can place events on all matching days
+      // We intentionally avoid attendees/capacity-per-slot to keep this lightweight.
 
       return {
         ...event,
@@ -196,7 +201,7 @@ export async function GET(request: Request) {
     });
 
     const responseData = { events, totalCount: data.host?.events?.totalCount || 0 };
-    cachedEventsListsByHost.set(hostId, { data: responseData, timestamp: Date.now() });
+    cachedEventsListsByHost.set(listCacheKey, { data: responseData, timestamp: Date.now() });
 
     return NextResponse.json(responseData);
   } catch (error: any) {
