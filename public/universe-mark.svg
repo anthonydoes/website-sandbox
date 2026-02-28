@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Universe logo">
+  <rect width="200" height="200" fill="#4D72E0" />
+  <path
+    fill="#ECEDEA"
+    d="M55 56c0-5 4-9 9-9h17c5 0 9 4 9 9v62c0 12 10 22 22 22s22-10 22-22V56c0-5 4-9 9-9h17c5 0 9 4 9 9v62c0 33-26 59-57 59s-57-26-57-59V56z"
+  />
+</svg>

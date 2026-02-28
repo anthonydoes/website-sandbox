@@ -311,9 +311,11 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[var(--color-brand)] to-[var(--color-brand-hover)] flex items-center justify-center shadow-lg shadow-[var(--color-brand)]/20">
-              <Ticket className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="/universe_com_logo.jpeg"
+              alt="Universe logo"
+              className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-[var(--color-brand)]/20"
+            />
             <span className="font-bold text-xl tracking-tight bg-linear-to-r from-[#222222] to-[#444444] bg-clip-text text-transparent">Universe Events API Sandbox</span>
           </div>
           <div className="hidden md:flex items-center gap-10">
@@ -795,6 +797,39 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* Documentation Callout */}
+      <section className="mx-auto max-w-7xl px-6 pb-12 lg:px-8">
+        <div className="rounded-3xl border border-gray-200 bg-linear-to-r from-[#f8faff] to-white p-8 sm:p-10 shadow-sm">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#222222]">Want the full integration breakdown?</h3>
+              <p className="mt-2 text-sm sm:text-base text-[#666666] max-w-2xl">
+                Explore the documentation for OAuth setup, GraphQL query patterns, checkout behavior, and more.
+              </p>
+            </div>
+            <a
+              href="/documentation"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-3 text-sm font-bold text-white hover:bg-[var(--color-brand-hover)] transition-colors shrink-0"
+            >
+              View Documentation
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[#717171]">
+            Universe Events API Sandbox
+          </p>
+          <div className="flex items-center gap-6 text-sm font-semibold">
+            <a href="/documentation" className="text-[#717171] hover:text-[#222222] transition-colors">Documentation</a>
+            <a href="https://www.universe.com/graphiql" target="_blank" rel="noopener noreferrer" className="text-[#717171] hover:text-[#222222] transition-colors">GraphQL Explorer</a>
+          </div>
+        </div>
+      </footer>
 
       {/* Expanded Day View Modal */}
       <AnimatePresence>

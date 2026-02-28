@@ -8,8 +8,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Client Sandbox | Great North Event Co.",
+  title: "Universe Events API Sandbox",
   description: "Explore our immersive event experiences.",
+  icons: {
+    icon: "/universe_com_logo.jpeg",
+    shortcut: "/universe_com_logo.jpeg",
+    apple: "/universe_com_logo.jpeg",
+  },
 };
 
 export default function RootLayout({

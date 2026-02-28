@@ -289,7 +289,7 @@ export default function DocumentationPage() {
 
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h4 className="text-base font-bold">Get Your Viewer ID</h4>
+                <h4 className="text-base font-bold">Use the following to get your host ID (note: you must be logged in to universe.com):</h4>
                 <button
                   onClick={() => copyText('viewer-id-query', `query {\n  viewer {\n      id\n      firstName\n      lastName\n    }\n}`)}
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors"
