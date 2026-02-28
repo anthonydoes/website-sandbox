@@ -84,6 +84,11 @@ const getTicketButtonLabel = (event) => {
 export default function DocumentationPage() {
   const [activeExample, setActiveExample] = useState<ExampleKey>('listQuery');
   const [copied, setCopied] = useState<string | null>(null);
+  const [hostIdInput, setHostIdInput] = useState('63ea8385a8d65900205da7a4');
+  const [requestUrl, setRequestUrl] = useState('/api/universe/events?hostId=63ea8385a8d65900205da7a4');
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestResult, setRequestResult] = useState<unknown>(null);
 
   const copyText = async (key: string, value: string) => {
     try {
@@ -92,6 +97,34 @@ export default function DocumentationPage() {
       window.setTimeout(() => setCopied(null), 1200);
     } catch {
       setCopied(null);
+    }
+  };
+
+  const runHostRequest = async () => {
+    const trimmedHostId = hostIdInput.trim();
+    if (!trimmedHostId) {
+      setRequestError('Host ID is required.');
+      setRequestResult(null);
+      return;
+    }
+
+    const url = `/api/universe/events?hostId=${encodeURIComponent(trimmedHostId)}`;
+    setRequestUrl(url);
+    setRequestError(null);
+    setRequestLoading(true);
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to fetch events');
+      }
+      setRequestResult(data);
+    } catch (error) {
+      setRequestResult(null);
+      setRequestError(error instanceof Error ? error.message : 'Request failed');
+    } finally {
+      setRequestLoading(false);
     }
   };
 
@@ -187,6 +220,71 @@ export default function DocumentationPage() {
             <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#111111] p-5 text-sm text-gray-100">
               <code>{examples[activeExample].code}</code>
             </pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-8">
+        <div className="rounded-3xl border border-gray-200 bg-white overflow-hidden">
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+            <h3 className="text-xl font-bold">Try This Request</h3>
+            <p className="mt-1 text-sm text-[#666]">
+              Enter a Universe host ID to fetch a live event list response from this demo API route.
+            </p>
+          </div>
+
+          <div className="p-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                value={hostIdInput}
+                onChange={(e) => setHostIdInput(e.target.value)}
+                placeholder="Universe host ID"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-mono focus:border-[var(--color-brand)] focus:outline-none"
+              />
+              <button
+                onClick={runHostRequest}
+                disabled={requestLoading}
+                className="inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-3 text-sm font-bold text-white hover:bg-[var(--color-brand-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                {requestLoading ? 'Fetching...' : 'Run Request'}
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#777]">Request URL</p>
+              <code className="mt-1 block text-sm text-[#222]">{requestUrl}</code>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => copyText('request-url', requestUrl)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors"
+              >
+                {copied === 'request-url' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                {copied === 'request-url' ? 'Copied URL' : 'Copy URL'}
+              </button>
+              {requestResult && (
+                <button
+                  onClick={() => copyText('request-json', JSON.stringify(requestResult, null, 2))}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  {copied === 'request-json' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  {copied === 'request-json' ? 'Copied JSON' : 'Copy JSON'}
+                </button>
+              )}
+            </div>
+
+            {requestError && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {requestError}
+              </div>
+            )}
+
+            {requestResult && (
+              <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#111111] p-5 text-xs sm:text-sm text-gray-100">
+                <code>{JSON.stringify(requestResult, null, 2)}</code>
+              </pre>
+            )}
           </div>
         </div>
       </section>

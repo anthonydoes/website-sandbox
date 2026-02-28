@@ -5,8 +5,8 @@ import axios from 'axios';
 let accessToken: string | null = null;
 let tokenExpiration: number | null = null;
 
-// Simple in-memory cache for the events list
-let cachedEventsList: { data: any, timestamp: number } | null = null;
+// Simple in-memory cache for events lists, keyed by host
+const cachedEventsListsByHost = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 60 * 1000; // 60 seconds
 const DETAIL_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const cachedEventDetails = new Map<string, { data: any; timestamp: number }>();
@@ -37,7 +37,7 @@ async function getAccessToken(): Promise<string> {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const hostId = "63ea8385a8d65900205da7a4";
+  const hostId = searchParams.get('hostId') || "63ea8385a8d65900205da7a4";
   const eventId = searchParams.get('eventId');
 
   try {
@@ -120,6 +120,7 @@ export async function GET(request: Request) {
     }
 
     // 2. Handle List View (with caching)
+    const cachedEventsList = cachedEventsListsByHost.get(hostId);
     if (cachedEventsList && (Date.now() - cachedEventsList.timestamp < CACHE_DURATION)) {
       console.log('Returning cached events list');
       return NextResponse.json(cachedEventsList.data);
@@ -195,7 +196,7 @@ export async function GET(request: Request) {
     });
 
     const responseData = { events, totalCount: data.host?.events?.totalCount || 0 };
-    cachedEventsList = { data: responseData, timestamp: Date.now() };
+    cachedEventsListsByHost.set(hostId, { data: responseData, timestamp: Date.now() });
 
     return NextResponse.json(responseData);
   } catch (error: any) {
