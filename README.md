@@ -158,5 +158,3 @@ Behavior:
   - verify OAuth token reuse is happening
 - **Calendar missing timed-entry dates**
   - increase list `timeslotLimit` if needed
-- **Favicon not updating**
-  - hard refresh (`Cmd+Shift+R`) due to browser icon caching
