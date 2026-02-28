@@ -635,9 +635,9 @@ export default function Home() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group relative bg-white border border-gray-200 rounded-2xl overflow-hidden hover:border-gray-300 hover:shadow-md transition-all duration-300 flex items-center p-4 md:p-6 gap-6"
+                    className="group relative bg-white border border-gray-200 rounded-2xl overflow-hidden hover:border-gray-300 hover:shadow-md transition-all duration-300 flex items-start p-4 md:p-6 gap-4"
                   >
-                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-100">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-100">
                       {event.coverImageUrl ? (
                         <img
                           src={event.coverImageUrl}
@@ -652,18 +652,18 @@ export default function Home() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-bold text-[#222222] mb-2 truncate">
+                      <h3 className="text-xl font-bold text-[#222222] mb-2 leading-tight">
                         {event.title}
                       </h3>
                       {event.timeSlots && event.timeSlots.length > 0 && (
-                        <div className="flex items-center gap-2 text-[#717171] mb-1">
+                        <div className="flex items-start gap-2 text-[#717171] mb-2">
                           <Calendar className="w-3.5 h-3.5 shrink-0" />
-                          <div className="text-sm">
+                          <div className="text-sm min-w-0">
                             {renderTimeSlots(event.timeSlots)}
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <span className="text-sm font-bold text-[#222222]">
                           {formatPrice(event.minPrice, event.maxPrice)}
                         </span>
@@ -682,34 +682,34 @@ export default function Home() {
                           {event.ageLimit}
                         </div>
                       )}
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-                      <button
-                        onClick={() => fetchEventDetails(event)}
-                        onMouseEnter={() => prefetchEventDetails(event)}
-                        onFocus={() => prefetchEventDetails(event)}
-                        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-[#222222] hover:bg-gray-50 border border-gray-200 hover:border-gray-900 transition-colors"
-                      >
-                        More Info
-                      </button>
-                      {shouldDisableTicketsButton(event) ? (
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <button
-                          type="button"
-                          disabled
-                          className="inline-flex items-center justify-center rounded-xl bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white cursor-not-allowed"
+                          onClick={() => fetchEventDetails(event)}
+                          onMouseEnter={() => prefetchEventDetails(event)}
+                          onFocus={() => prefetchEventDetails(event)}
+                          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#222222] hover:bg-gray-50 border border-gray-200 hover:border-gray-900 transition-colors"
                         >
-                          Sold Out
+                          More Info
                         </button>
-                      ) : (
-                        <a
-                          href={event.url}
-                          onClick={(e) => handleTicketClick(e, event)}
-                          className="uni-embed inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
-                        >
-                          {renderTicketCtaContent(event)}
-                        </a>
-                      )}
+                        {shouldDisableTicketsButton(event) ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="inline-flex items-center justify-center rounded-xl bg-gray-300 px-4 py-2 text-sm font-semibold text-white cursor-not-allowed"
+                          >
+                            Sold Out
+                          </button>
+                        ) : (
+                          <a
+                            href={event.url}
+                            onClick={(e) => handleTicketClick(e, event)}
+                            className="uni-embed inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
+                          >
+                            {renderTicketCtaContent(event)}
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -717,8 +717,8 @@ export default function Home() {
             ) : (
               <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm">
                 {/* Calendar Header */}
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold text-[#222222]">
+                <div className="flex items-center justify-between mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-bold text-[#222222]">
                     {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
                   </h2>
                   <div className="flex gap-2">
@@ -737,8 +737,71 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Mobile Month Agenda */}
+                <div className="md:hidden">
+                  {(() => {
+                    const monthEventDays = Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() })
+                      .map((_, i) => {
+                        const day = i + 1;
+                        const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                        const dayEvents = events.filter(event =>
+                          event.timeSlots?.some(slot => {
+                            const start = new Date(slot.startAt);
+                            return start.getDate() === day &&
+                              start.getMonth() === currentDate.getMonth() &&
+                              start.getFullYear() === currentDate.getFullYear();
+                          })
+                        );
+                        return { day, dayDate, dayEvents };
+                      })
+                      .filter((entry) => entry.dayEvents.length > 0);
+
+                    if (monthEventDays.length === 0) {
+                      return <p className="text-sm text-[#717171]">No events scheduled this month.</p>;
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {monthEventDays.map(({ day, dayDate, dayEvents }) => {
+                          const displayEvents = dayEvents.slice(0, 3);
+                          const remainingCount = dayEvents.length - displayEvents.length;
+
+                          return (
+                            <div key={day} className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                              <p className="text-sm font-bold text-[#222222] mb-2">
+                                {dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                              </p>
+                              <div className="flex flex-col gap-2">
+                                {displayEvents.map((event) => (
+                                  <button
+                                    key={event.id}
+                                    onClick={() => fetchEventDetails(event)}
+                                    onMouseEnter={() => prefetchEventDetails(event)}
+                                    onFocus={() => prefetchEventDetails(event)}
+                                    className="w-full text-xs text-left px-2 py-2 rounded-lg bg-white border border-[var(--color-brand)]/25 text-[var(--color-brand)] truncate hover:bg-[var(--color-brand)]/10 transition-colors font-semibold"
+                                  >
+                                    {event.title}
+                                  </button>
+                                ))}
+                                {remainingCount > 0 && (
+                                  <button
+                                    onClick={() => setSelectedDateEvents({ date: dayDate, events: dayEvents })}
+                                    className="w-full text-xs text-left px-2 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors font-medium"
+                                  >
+                                    + {remainingCount} more
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-[1px] bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+                <div className="hidden md:grid grid-cols-7 gap-[1px] bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div key={day} className="bg-gray-50 py-3 text-center text-sm font-semibold text-[#717171]">
                       {day}
