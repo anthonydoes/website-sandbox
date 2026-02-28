@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Code2, Copy, Database, Gauge, Layers, ShieldCheck, Sparkles, Ticket } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Code2, Copy, Database, Gauge, Github, Layers, ShieldCheck, Sparkles, Ticket } from 'lucide-react';
 
 type ExampleKey = 'authFlow' | 'listQuery' | 'detailQuery' | 'embedCheckout' | 'ctaLogic';
 
@@ -189,13 +189,24 @@ export default function DocumentationPage() {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#717171] hover:text-[#222222] transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Demo
-          </a>
+          <div className="flex items-center justify-between gap-4">
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#717171] hover:text-[#222222] transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Demo
+            </a>
+            <a
+              href="https://github.com/anthonydoes/website-sandbox"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-[#222222] hover:text-[var(--color-brand)] hover:border-[var(--color-brand)]/40 transition-colors"
+            >
+              <Github className="h-4 w-4" />
+              View GitHub Repo
+            </a>
+          </div>
           <h1 className="mt-6 text-4xl sm:text-6xl font-black tracking-tight">
             Universe API - Events Integration Docs
           </h1>
@@ -611,6 +622,18 @@ querySelector('iframe[src*="universe.com"]')`,
           </div>
         </article>
       </section>
+
+      <footer className="border-t border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[#717171]">Universe Events API Sandbox</p>
+          <div className="flex items-center gap-6 text-sm font-semibold">
+            <a href="/" className="text-[#717171] hover:text-[#222222] transition-colors">Demo</a>
+            <a href="https://developers.universe.com/" target="_blank" rel="noopener noreferrer" className="text-[#717171] hover:text-[#222222] transition-colors">Dev Docs</a>
+            <a href="https://www.universe.com/graphiql" target="_blank" rel="noopener noreferrer" className="text-[#717171] hover:text-[#222222] transition-colors">GraphQL Explorer</a>
+            <a href="https://github.com/anthonydoes/website-sandbox" target="_blank" rel="noopener noreferrer" className="text-[#717171] hover:text-[#222222] transition-colors">GitHub Repo</a>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
