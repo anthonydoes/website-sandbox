@@ -44,8 +44,10 @@ export default function Home() {
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [checkoutLoadingEventId, setCheckoutLoadingEventId] = useState<string | null>(null);
   const detailCacheRef = useRef<Map<string, Event>>(new Map());
   const inFlightDetailRequestsRef = useRef<Map<string, Promise<Event>>>(new Map());
+  const checkoutTimeoutRef = useRef<number | null>(null);
 
   const loadEventDetails = useCallback(async (eventId: string): Promise<Event> => {
     const cached = detailCacheRef.current.get(eventId);
@@ -118,6 +120,28 @@ export default function Home() {
     }, 7000);
     return () => clearInterval(timer);
   }, [events.length]);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const iframe = document.querySelector('iframe[src*="universe.com"]');
+      if (iframe) {
+        setCheckoutLoadingEventId(null);
+        if (checkoutTimeoutRef.current) {
+          window.clearTimeout(checkoutTimeoutRef.current);
+          checkoutTimeoutRef.current = null;
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      if (checkoutTimeoutRef.current) {
+        window.clearTimeout(checkoutTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Load the Universe Embed script dynamically
@@ -234,6 +258,37 @@ export default function Home() {
     if (shouldUseWaitlist(event)) return 'Join Waitlist';
     if (shouldDisableTicketsButton(event)) return 'Sold Out';
     return 'Get Tickets';
+  };
+
+  const isCheckoutLoading = (event: Event) => checkoutLoadingEventId === event.id;
+
+  const handleTicketClick = (e: React.MouseEvent<HTMLAnchorElement>, event: Event) => {
+    if (checkoutLoadingEventId === event.id) {
+      e.preventDefault();
+      return;
+    }
+
+    setCheckoutLoadingEventId(event.id);
+    if (checkoutTimeoutRef.current) {
+      window.clearTimeout(checkoutTimeoutRef.current);
+    }
+    checkoutTimeoutRef.current = window.setTimeout(() => {
+      setCheckoutLoadingEventId(null);
+      checkoutTimeoutRef.current = null;
+    }, 7000);
+  };
+
+  const renderTicketCtaContent = (event: Event, compact = false) => {
+    if (!isCheckoutLoading(event)) {
+      return getTicketButtonLabel(event);
+    }
+
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/60 border-t-white" />
+        {compact ? 'Opening...' : 'Opening Checkout...'}
+      </span>
+    );
   };
 
   const getAvailabilityLabel = (sold?: number, capacity?: number, soldOut?: boolean) => {
@@ -395,9 +450,10 @@ export default function Home() {
                           ) : (
                             <a
                               href={events[currentSlide].url}
-                              className="uni-embed px-8 py-4 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold transition-all duration-200 shadow-sm"
+                              onClick={(e) => handleTicketClick(e, events[currentSlide])}
+                              className="uni-embed inline-flex items-center justify-center px-8 py-4 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold transition-all duration-200 shadow-sm"
                             >
-                              {getTicketButtonLabel(events[currentSlide])}
+                              {renderTicketCtaContent(events[currentSlide])}
                             </a>
                           )}
                         </div>
@@ -558,9 +614,10 @@ export default function Home() {
                         ) : (
                           <a
                             href={event.url}
+                            onClick={(e) => handleTicketClick(e, event)}
                             className="uni-embed flex-1 inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-3.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
                           >
-                            {getTicketButtonLabel(event)}
+                            {renderTicketCtaContent(event)}
                           </a>
                         )}
                       </div>
@@ -645,9 +702,10 @@ export default function Home() {
                       ) : (
                         <a
                           href={event.url}
+                          onClick={(e) => handleTicketClick(e, event)}
                           className="uni-embed inline-flex items-center justify-center rounded-xl bg-[var(--color-brand)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
                         >
-                          {getTicketButtonLabel(event)}
+                          {renderTicketCtaContent(event)}
                         </a>
                       )}
                     </div>
@@ -810,9 +868,10 @@ export default function Home() {
                     ) : (
                       <a
                         href={event.url}
-                        className="uni-embed rounded-lg bg-[var(--color-brand)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
+                        onClick={(e) => handleTicketClick(e, event)}
+                        className="uni-embed inline-flex items-center justify-center rounded-lg bg-[var(--color-brand)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
                       >
-                        {getTicketButtonLabel(event)}
+                        {renderTicketCtaContent(event, true)}
                       </a>
                     )}
                   </div>
@@ -1070,9 +1129,10 @@ export default function Home() {
                 ) : (
                   <a
                     href={selectedEvent.url}
+                    onClick={(e) => handleTicketClick(e, selectedEvent)}
                     className="uni-embed flex items-center justify-center w-full rounded-xl bg-[var(--color-brand)] px-8 py-4 text-base font-bold text-white shadow-md hover:bg-[var(--color-brand-hover)] transition-colors"
                   >
-                    {getTicketButtonLabel(selectedEvent)}
+                    {renderTicketCtaContent(selectedEvent)}
                   </a>
                 )}
               </div>
