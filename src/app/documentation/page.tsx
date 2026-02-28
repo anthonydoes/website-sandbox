@@ -182,7 +182,7 @@ export default function DocumentationPage() {
 
   return (
     <main className="min-h-screen bg-white text-[#222222]">
-      <section className="relative overflow-hidden border-b border-gray-100 bg-linear-to-br from-white via-[#fff8f9] to-[#f7fbff]">
+      <section className="relative overflow-hidden border-b border-gray-100 bg-linear-to-br from-white via-[#f3f7ff] to-[#eef4ff]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-[var(--color-brand)]/10 blur-3xl" />
           <div className="absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-sky-400/10 blur-3xl" />

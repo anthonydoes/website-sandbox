@@ -311,10 +311,10 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[var(--color-brand)] to-[#D90B38] flex items-center justify-center shadow-lg shadow-[var(--color-brand)]/20">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[var(--color-brand)] to-[var(--color-brand-hover)] flex items-center justify-center shadow-lg shadow-[var(--color-brand)]/20">
               <Ticket className="w-6 h-6 text-white" />
             </div>
-            <span className="font-bold text-xl tracking-tight bg-linear-to-r from-[#222222] to-[#444444] bg-clip-text text-transparent">Great North Event Co.</span>
+            <span className="font-bold text-xl tracking-tight bg-linear-to-r from-[#222222] to-[#444444] bg-clip-text text-transparent">Universe Events API Sandbox</span>
           </div>
           <div className="hidden md:flex items-center gap-10">
             <a href="#demo" className="text-sm font-semibold text-[#222222] hover:text-[var(--color-brand)] transition-colors relative group">
